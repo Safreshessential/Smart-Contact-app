@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#087f45">
+<title>Smart Contact</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f8f5;color:#17251c}
+header{background:#087f45;color:white;padding:22px 18px;border-radius:0 0 22px 22px}
+header h2{margin:0;font-size:24px}
+header p{margin:7px 0 0;font-size:13px}
+main{padding:18px 15px 85px}
+.search{width:100%;padding:14px;border:1px solid #dce6df;border-radius:12px;font-size:15px;margin-bottom:18px}
+.welcome{background:white;padding:18px;border-radius:15px;margin-bottom:18px}
+.welcome h3{margin:0 0 8px;color:#087f45}
+.welcome p{margin:0;color:#65736a;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:white;border-radius:15px;padding:20px 12px;text-align:center;border:1px solid #e5eee7}
+.tile .symbol{font-size:28px}
+.tile h3{font-size:15px;margin:10px 0 4px}
+.tile p{font-size:12px;color:#758078;margin:0}
+section{display:none}
+section.active{display:block}
+h3.heading{color:#087f45}
+.action{background:#087f45;color:white;border:0;border-radius:10px;padding:12px 18px;font-size:14px}
+.field{width:100%;padding:13px;border:1px solid #dce6df;border-radius:10px;margin:7px 0 14px;font-size:15px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #e1e9e3;display:flex;justify-content:space-around;padding:10px 3px}
+.nav button{border:0;background:none;color:#68766c;font-size:11px}
+.nav button span{display:block;font-size:20px;margin-bottom:4px}
+.nav button.selected{color:#087f45;font-weight:bold}
+.dial{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}
+.dial button{padding:18px;border:0;border-radius:12px;background:white;font-size:22px}
+</style>
+</head>
+<body>
+<header>
+<h2>Smart Contact</h2>
+<p>All your connections in one place</p>
+</header>
+
+<main>
+<section id="home" class="active">
+<input class="search" placeholder="Search contacts and features...">
+<div class="welcome">
+<h3>Welcome to Smart Contact</h3>
+<p>Manage your contacts, calls and messages with ease.</p>
+</div>
+<div class="grid">
+<div class="tile" onclick="show('contacts')"><div class="symbol">👥</div><h3>Contacts</h3><p>Manage your contacts</p></div>
+<div class="tile" onclick="show('calls')"><div class="symbol">📞</div><h3>Calls</h3><p>Open the dial pad</p></div>
+<div class="tile" onclick="show('messages')"><div class="symbol">💬</div><h3>Messages</h3><p>SMS messaging</p></div>
+<div class="tile" onclick="show('apps')"><div class="symbol">📱</div><h3>Other Apps</h3><p>Communication apps</p></div>
+</div>
+</section>
+
+<section id="contacts">
+<h3 class="heading">My Contacts</h3>
+<p>Contacts will appear here when Android contact access is connected.</p>
+<input class="field" placeholder="Search contacts">
+<button class="action" onclick="alert('Native Android contact integration will be added next.')">Add Contact</button>
+</section>
+
+<section id="calls">
+<h3 class="heading">Phone Dialer</h3>
+<input class="field" id="number" placeholder="Enter phone number" type="tel">
+<div class="dial">
+<button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button>
+<button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button>
+<button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button>
+<button onclick="press('*')">*</button><button onclick="press('0')">0</button><button onclick="press('#')">#</button>
+</div>
+<button class="action" style="width:100%;margin-top:15px" onclick="callNumber()">📞 Call</button>
+</section>
+
+<section id="messages">
+<h3 class="heading">Messages</h3>
+<p>Your SMS inbox and conversations will appear here after Android SMS integration.</p>
+<input class="field" placeholder="Enter recipient number">
+<textarea class="field" placeholder="Write a message"></textarea>
+<button class="action" onclick="alert('Native SMS integration will be added next.')">Send Message</button>
+</section>
+
+<section id="apps">
+<h3 class="heading">Communication Apps</h3>
+<div class="tile"><h3>WhatsApp</h3><p>Communication shortcut coming soon</p></div>
+<div class="tile"><h3>Telegram</h3><p>Communication shortcut coming soon</p></div>
+<div class="tile"><h3>Messenger</h3><p>Communication shortcut coming soon</p></div>
+<div class="tile"><h3>Email</h3><p>Email shortcut coming soon</p></div>
+</section>
+</main>
+
+<nav class="nav">
+<button class="selected" onclick="show('home',this)"><span>⌂</span>Home</button>
+<button onclick="show('contacts',this)"><span>👥</span>Contacts</button>
+<button onclick="show('calls',this)"><span>☎</span>Calls</button>
+<button onclick="show('messages',this)"><span>✉</span>Messages</button>
+<button onclick="show('apps',this)"><span>▦</span>Apps</button>
+</nav>
+
+<script>
+function show(id,btn){
+document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('selected'));
+if(btn)btn.classList.add('selected');
+}
+function press(value){document.getElementById('number').value+=value;}
+function callNumber(){
+let n=document.getElementById('number').value.trim();
+if(n)location.href='tel:'+n;
+else alert('Enter a phone number first.');
+}
+</script>
+</body>
+</html>
