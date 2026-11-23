@@ -1,4 +1,3 @@
-
 package com.safroshessential.smartcontact
 
 import android.app.Activity
