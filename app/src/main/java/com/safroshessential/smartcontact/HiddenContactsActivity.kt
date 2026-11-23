@@ -1,20 +1,20 @@
 package com.safroshessential.smartcontact
 
+import android.app.Activity
 import android.os.Bundle
+import android.os.Build
+import android.os.CancellationSignal
 import android.content.Context
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
-import androidx.fragment.app.FragmentActivity
-import androidx.biometric.BiometricPrompt
-import androidx.biometric.BiometricManager
-import androidx.core.content.ContextCompat
+import android.hardware.fingerprint.FingerprintManager
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-class HiddenContactsActivity : FragmentActivity() {
+class HiddenContactsActivity : Activity() {
 
     private val prefs by lazy {
         getSharedPreferences("HiddenContactSecurity", Context.MODE_PRIVATE)
@@ -62,6 +62,7 @@ class HiddenContactsActivity : FragmentActivity() {
             } else {
                 "Create PIN"
             }
+
             setOnClickListener {
                 handlePin()
             }
@@ -69,6 +70,7 @@ class HiddenContactsActivity : FragmentActivity() {
 
         val fingerprintButton = Button(this).apply {
             text = "Unlock with Fingerprint"
+
             setOnClickListener {
                 authenticateFingerprint()
             }
@@ -87,7 +89,11 @@ class HiddenContactsActivity : FragmentActivity() {
         val pin = pinInput.text.toString()
 
         if (pin.length < 6 || !pin.all { it.isDigit() }) {
-            Toast.makeText(this, "PIN must contain at least 6 digits", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "PIN must contain at least 6 digits",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -96,64 +102,118 @@ class HiddenContactsActivity : FragmentActivity() {
             SecureRandom().nextBytes(salt)
 
             prefs.edit()
-                .putString("pin_salt", salt.joinToString("") { "%02x".format(it) })
+                .putString(
+                    "pin_salt",
+                    salt.joinToString("") { "%02x".format(it) }
+                )
                 .putString("pin_hash", hashPin(pin, salt))
                 .apply()
 
-            Toast.makeText(this, "Private PIN created", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Private PIN created",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            pinInput.text.clear()
             return
         }
 
-        val salt = hexToBytes(prefs.getString("pin_salt", "") ?: "")
+        val salt = hexToBytes(
+            prefs.getString("pin_salt", "") ?: ""
+        )
+
         val savedHash = prefs.getString("pin_hash", "") ?: ""
 
         if (MessageDigest.isEqual(
                 hashPin(pin, salt).toByteArray(),
                 savedHash.toByteArray()
-            )) {
-            Toast.makeText(this, "PIN accepted", Toast.LENGTH_SHORT).show()
+            )
+        ) {
+            Toast.makeText(
+                this,
+                "PIN accepted",
+                Toast.LENGTH_SHORT
+            ).show()
         } else {
-            Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Incorrect PIN",
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
         pinInput.text.clear()
     }
 
     private fun hashPin(pin: String, salt: ByteArray): String {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, 120000, 256)
-        val result = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-            .generateSecret(spec).encoded
+        val spec = PBEKeySpec(
+            pin.toCharArray(),
+            salt,
+            120000,
+            256
+        )
+
+        val result = SecretKeyFactory
+            .getInstance("PBKDF2WithHmacSHA256")
+            .generateSecret(spec)
+            .encoded
+
         spec.clearPassword()
-        return result.joinToString("") { "%02x".format(it) }
+
+        return result.joinToString("") {
+            "%02x".format(it)
+        }
     }
 
     private fun hexToBytes(value: String): ByteArray {
-        return value.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return value.chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
     }
 
     private fun authenticateFingerprint() {
-        val manager = BiometricManager.from(this)
 
-        if (manager.canAuthenticate(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG
-            ) != BiometricManager.BIOMETRIC_SUCCESS
-        ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             Toast.makeText(
                 this,
-                "Fingerprint is unavailable. Please use your PIN.",
+                "Fingerprint authentication is not supported. Use your PIN.",
                 Toast.LENGTH_LONG
             ).show()
             return
         }
 
-        val prompt = BiometricPrompt(
-            this,
-            ContextCompat.getMainExecutor(this),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(
-                    result: BiometricPrompt.AuthenticationResult
-                ) {
-                    super.onAuthenticationSucceeded(result)
+        val fingerprintManager =
+            getSystemService(Context.FINGERPRINT_SERVICE) as FingerprintManager
+
+        if (!fingerprintManager.isHardwareDetected) {
+            Toast.makeText(
+                this,
+                "Fingerprint sensor not found. Use your PIN.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        if (!fingerprintManager.hasEnrolledFingerprints()) {
+            Toast.makeText(
+                this,
+                "No fingerprint is registered on this phone.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val cancellationSignal = CancellationSignal()
+
+        val callback = object : FingerprintManager.AuthenticationCallback() {
+
+            override fun onAuthenticationSucceeded(
+                result: FingerprintManager.AuthenticationResult?
+            ) {
+                super.onAuthenticationSucceeded(result)
+
+                runOnUiThread {
                     Toast.makeText(
                         this@HiddenContactsActivity,
                         "Fingerprint accepted",
@@ -161,14 +221,41 @@ class HiddenContactsActivity : FragmentActivity() {
                     ).show()
                 }
             }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+
+                runOnUiThread {
+                    Toast.makeText(
+                        this@HiddenContactsActivity,
+                        "Fingerprint not recognised. Try again.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            override fun onAuthenticationError(
+                errorCode: Int,
+                errString: CharSequence
+            ) {
+                super.onAuthenticationError(errorCode, errString)
+
+                runOnUiThread {
+                    Toast.makeText(
+                        this@HiddenContactsActivity,
+                        errString,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
+        fingerprintManager.authenticate(
+            null,
+            cancellationSignal,
+            0,
+            callback,
+            null
         )
-
-        val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Private Contacts")
-            .setSubtitle("Verify your fingerprint")
-            .setNegativeButtonText("Use PIN instead")
-            .build()
-
-        prompt.authenticate(info)
     }
 }
