@@ -2,7 +2,6 @@ package com.safroshessential.smartcontact
 
 import android.app.Activity
 import android.os.Bundle
-import android.os.Build
 import android.os.CancellationSignal
 import android.content.Context
 import android.graphics.Color
@@ -22,9 +21,17 @@ class HiddenContactsActivity : Activity() {
 
     private lateinit var pinInput: EditText
 
+    private lateinit var storage: PrivateContactStorage
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        storage = PrivateContactStorage(this)
+
+        showLoginScreen()
+    }
+
+    private fun showLoginScreen() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -62,7 +69,6 @@ class HiddenContactsActivity : Activity() {
             } else {
                 "Create PIN"
             }
-
             setOnClickListener {
                 handlePin()
             }
@@ -70,7 +76,6 @@ class HiddenContactsActivity : Activity() {
 
         val fingerprintButton = Button(this).apply {
             text = "Unlock with Fingerprint"
-
             setOnClickListener {
                 authenticateFingerprint()
             }
@@ -115,7 +120,7 @@ class HiddenContactsActivity : Activity() {
                 Toast.LENGTH_SHORT
             ).show()
 
-            pinInput.text.clear()
+            showVault()
             return
         }
 
@@ -130,20 +135,16 @@ class HiddenContactsActivity : Activity() {
                 savedHash.toByteArray()
             )
         ) {
-            Toast.makeText(
-                this,
-                "PIN accepted",
-                Toast.LENGTH_SHORT
-            ).show()
+            pinInput.text.clear()
+            showVault()
         } else {
             Toast.makeText(
                 this,
                 "Incorrect PIN",
                 Toast.LENGTH_SHORT
             ).show()
+            pinInput.text.clear()
         }
-
-        pinInput.text.clear()
     }
 
     private fun hashPin(pin: String, salt: ByteArray): String {
@@ -174,31 +175,25 @@ class HiddenContactsActivity : Activity() {
 
     private fun authenticateFingerprint() {
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        if (!prefs.contains("pin_hash")) {
             Toast.makeText(
                 this,
-                "Fingerprint authentication is not supported. Use your PIN.",
+                "Create your private PIN first.",
                 Toast.LENGTH_LONG
             ).show()
             return
         }
 
         val fingerprintManager =
-            getSystemService(Context.FINGERPRINT_SERVICE) as FingerprintManager
+            getSystemService(Context.FINGERPRINT_SERVICE)
+                as FingerprintManager
 
-        if (!fingerprintManager.isHardwareDetected) {
+        if (!fingerprintManager.isHardwareDetected ||
+            !fingerprintManager.hasEnrolledFingerprints()
+        ) {
             Toast.makeText(
                 this,
-                "Fingerprint sensor not found. Use your PIN.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        if (!fingerprintManager.hasEnrolledFingerprints()) {
-            Toast.makeText(
-                this,
-                "No fingerprint is registered on this phone.",
+                "Fingerprint unavailable. Please use your PIN.",
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -206,49 +201,46 @@ class HiddenContactsActivity : Activity() {
 
         val cancellationSignal = CancellationSignal()
 
-        val callback = object : FingerprintManager.AuthenticationCallback() {
+        val callback =
+            object : FingerprintManager.AuthenticationCallback() {
 
-            override fun onAuthenticationSucceeded(
-                result: FingerprintManager.AuthenticationResult?
-            ) {
-                super.onAuthenticationSucceeded(result)
+                override fun onAuthenticationSucceeded(
+                    result: FingerprintManager.AuthenticationResult?
+                ) {
+                    super.onAuthenticationSucceeded(result)
 
-                runOnUiThread {
-                    Toast.makeText(
-                        this@HiddenContactsActivity,
-                        "Fingerprint accepted",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    runOnUiThread {
+                        showVault()
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@HiddenContactsActivity,
+                            "Fingerprint not recognised.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                override fun onAuthenticationError(
+                    errorCode: Int,
+                    errString: CharSequence
+                ) {
+                    super.onAuthenticationError(errorCode, errString)
+
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@HiddenContactsActivity,
+                            errString,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-
-                runOnUiThread {
-                    Toast.makeText(
-                        this@HiddenContactsActivity,
-                        "Fingerprint not recognised. Try again.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-
-            override fun onAuthenticationError(
-                errorCode: Int,
-                errString: CharSequence
-            ) {
-                super.onAuthenticationError(errorCode, errString)
-
-                runOnUiThread {
-                    Toast.makeText(
-                        this@HiddenContactsActivity,
-                        errString,
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
 
         fingerprintManager.authenticate(
             null,
@@ -257,5 +249,103 @@ class HiddenContactsActivity : Activity() {
             callback,
             null
         )
+    }
+
+    private fun showVault() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(Color.WHITE)
+        }
+
+        val title = TextView(this).apply {
+            text = "My Private Contacts"
+            textSize = 25f
+            setTextColor(Color.rgb(8, 127, 69))
+            gravity = Gravity.CENTER
+        }
+
+        val nameInput = EditText(this).apply {
+            hint = "Contact name"
+        }
+
+        val phoneInput = EditText(this).apply {
+            hint = "Phone number"
+            inputType = 3
+        }
+
+        val saveButton = Button(this).apply {
+            text = "Save Private Contact"
+            setOnClickListener {
+                val name = nameInput.text.toString()
+                val phone = phoneInput.text.toString()
+
+                if (storage.saveContact(name, phone)) {
+                    nameInput.text.clear()
+                    phoneInput.text.clear()
+
+                    Toast.makeText(
+                        this@HiddenContactsActivity,
+                        "Private contact saved",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    refreshContacts(layout)
+                } else {
+                    Toast.makeText(
+                        this@HiddenContactsActivity,
+                        "Enter a name and phone number",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+
+        val contactsTitle = TextView(this).apply {
+            text = "Saved Contacts"
+            textSize = 20f
+            setPadding(0, 24, 0, 12)
+        }
+
+        layout.addView(title)
+        layout.addView(nameInput)
+        layout.addView(phoneInput)
+        layout.addView(saveButton)
+        layout.addView(contactsTitle)
+
+        setContentView(layout)
+
+        refreshContacts(layout)
+    }
+
+    private fun refreshContacts(layout: LinearLayout) {
+        val oldList = layout.findViewWithTag<LinearLayout>("private_list")
+        if (oldList != null) {
+            layout.removeView(oldList)
+        }
+
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "private_list"
+        }
+
+        val contacts = storage.getContacts()
+
+        if (contacts.isEmpty()) {
+            list.addView(TextView(this).apply {
+                text = "No private contacts saved yet."
+                textSize = 16f
+            })
+        } else {
+            contacts.forEach { contact ->
+                list.addView(TextView(this).apply {
+                    text = "${contact.name}\n${contact.phone}"
+                    textSize = 17f
+                    setPadding(8, 12, 8, 12)
+                })
+            }
+        }
+
+        layout.addView(list)
     }
 }
