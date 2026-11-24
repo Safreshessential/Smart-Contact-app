@@ -2,8 +2,10 @@ package com.safroshessential.smartcontact
 
 import android.app.Activity
 import android.os.Bundle
+import android.content.Intent
 import android.graphics.Color
 import android.view.Gravity
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -31,11 +33,24 @@ class MainActivity : Activity() {
             textSize = 16f
             setTextColor(Color.DKGRAY)
             gravity = Gravity.CENTER
-            setPadding(0, 15, 0, 0)
+            setPadding(0, 15, 0, 25)
+        }
+
+        val privateContactsButton = Button(this).apply {
+            text = "Private Contacts"
+
+            setOnClickListener {
+                val intent = Intent(
+                    this@MainActivity,
+                    HiddenContactsActivity::class.java
+                )
+                startActivity(intent)
+            }
         }
 
         layout.addView(title)
         layout.addView(subtitle)
+        layout.addView(privateContactsButton)
 
         setContentView(layout)
     }
