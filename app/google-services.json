@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "46321936571",
+    "project_id": "smart-contact-ff818",
+    "storage_bucket": "smart-contact-ff818.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:46321936571:android:21a3070620d46048fb219e",
+        "android_client_info": {
+          "package_name": "com.safroshessential.smartcontact"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlpERAlULjIT-Wp1SoFfJxO2HDOLCDzyY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
