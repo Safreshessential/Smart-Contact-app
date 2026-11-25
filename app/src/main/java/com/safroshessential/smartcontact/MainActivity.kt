@@ -6,12 +6,10 @@ import android.app.AlertDialog
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.graphics.Color
 import android.view.Gravity
-import android.view.View
 import android.widget.*
 
 class MainActivity : Activity() {
@@ -68,11 +66,12 @@ class MainActivity : Activity() {
 
         searchInput = EditText(this).apply {
             hint = "Search name or phone number"
-            singleLine = true
+            setSingleLine(true)
         }
 
         searchInput.addTextChangedListener(
             object : android.text.TextWatcher {
+
                 override fun beforeTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -97,6 +96,7 @@ class MainActivity : Activity() {
 
         val addButton = Button(this).apply {
             text = "Add New Contact"
+
             setOnClickListener {
                 addContact()
             }
@@ -104,6 +104,7 @@ class MainActivity : Activity() {
 
         val privateButton = Button(this).apply {
             text = "Private Contacts"
+
             setOnClickListener {
                 startActivity(
                     Intent(
@@ -174,6 +175,7 @@ class MainActivity : Activity() {
         )
 
         if (requestCode == 100) {
+
             if (hasContactPermission()) {
                 loadContacts()
             } else {
@@ -204,6 +206,7 @@ class MainActivity : Activity() {
         )
 
         cursor?.use {
+
             val idIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID
             )
@@ -240,16 +243,21 @@ class MainActivity : Activity() {
         val query = searchInput.text.toString().trim()
 
         val filtered = contacts.filter {
+
             it.name.contains(query, ignoreCase = true) ||
                 it.phone.contains(query, ignoreCase = true)
         }
 
         if (filtered.isEmpty()) {
-            contactsList.addView(TextView(this).apply {
-                text = "No contacts found."
-                textSize = 16f
-                setPadding(8, 20, 8, 20)
-            })
+
+            contactsList.addView(
+                TextView(this).apply {
+                    text = "No contacts found."
+                    textSize = 16f
+                    setPadding(8, 20, 8, 20)
+                }
+            )
+
             return
         }
 
@@ -279,6 +287,7 @@ class MainActivity : Activity() {
 
             val editButton = Button(this).apply {
                 text = "Edit"
+
                 setOnClickListener {
                     editContact(contact)
                 }
@@ -286,6 +295,7 @@ class MainActivity : Activity() {
 
             val deleteButton = Button(this).apply {
                 text = "Delete"
+
                 setOnClickListener {
                     confirmDelete(contact)
                 }
@@ -385,14 +395,19 @@ class MainActivity : Activity() {
             contentResolver.delete(uri, null, null)
 
             showMessage("Contact deleted.")
+
             loadContacts()
 
         } catch (e: Exception) {
-            showMessage("Unable to delete this contact.")
+
+            showMessage(
+                "Unable to delete this contact."
+            )
         }
     }
 
     private fun showMessage(message: String) {
+
         Toast.makeText(
             this,
             message,
