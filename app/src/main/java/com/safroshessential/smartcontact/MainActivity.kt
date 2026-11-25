@@ -32,10 +32,7 @@ class MainActivity : Activity() {
     private val contacts = mutableListOf<Contact>()
 
     private val favoritePrefs by lazy {
-        getSharedPreferences(
-            "SmartContactFavorites",
-            MODE_PRIVATE
-        )
+        getSharedPreferences("SmartContactFavorites", MODE_PRIVATE)
     }
 
     private val favoriteIds = mutableSetOf<String>()
@@ -48,10 +45,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         favoriteIds.addAll(
-            favoritePrefs.getStringSet(
-                "favorite_ids",
-                emptySet()
-            ) ?: emptySet()
+            favoritePrefs.getStringSet("favorite_ids", emptySet())
+                ?: emptySet()
         )
 
         showHomeScreen()
@@ -60,15 +55,12 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
-        if (::contactsList.isInitialized &&
-            hasContactPermission()
-        ) {
+        if (::contactsList.isInitialized && hasContactPermission()) {
             loadContacts()
         }
     }
 
     private fun showHomeScreen() {
-
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 30, 24, 24)
@@ -97,40 +89,27 @@ class MainActivity : Activity() {
 
         searchInput.addTextChangedListener(
             object : android.text.TextWatcher {
-
                 override fun beforeTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    count: Int,
-                    after: Int
+                    s: CharSequence?, start: Int, count: Int, after: Int
                 ) {}
 
                 override fun onTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    before: Int,
-                    count: Int
+                    s: CharSequence?, start: Int, before: Int, count: Int
                 ) {
                     displayContacts()
                 }
 
-                override fun afterTextChanged(
-                    s: android.text.Editable?
-                ) {}
+                override fun afterTextChanged(s: android.text.Editable?) {}
             }
         )
 
         val addButton = Button(this).apply {
             text = "Add New Contact"
-
-            setOnClickListener {
-                addContact()
-            }
+            setOnClickListener { addContact() }
         }
 
         val privateButton = Button(this).apply {
             text = "Private Contacts"
-
             setOnClickListener {
                 startActivity(
                     Intent(
@@ -148,7 +127,6 @@ class MainActivity : Activity() {
 
         val allButton = Button(this).apply {
             text = "All Contacts"
-
             setOnClickListener {
                 showFavoritesOnly = false
                 displayContacts()
@@ -157,7 +135,6 @@ class MainActivity : Activity() {
 
         val favoritesButton = Button(this).apply {
             text = "★ Favourites"
-
             setOnClickListener {
                 showFavoritesOnly = true
                 displayContacts()
@@ -166,20 +143,12 @@ class MainActivity : Activity() {
 
         filterButtons.addView(
             allButton,
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
-            )
+            LinearLayout.LayoutParams(0, -2, 1f)
         )
 
         filterButtons.addView(
             favoritesButton,
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
-            )
+            LinearLayout.LayoutParams(0, -2, 1f)
         )
 
         val heading = TextView(this).apply {
@@ -193,6 +162,10 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
         }
 
+        val scrollView = ScrollView(this).apply {
+            addView(contactsList)
+        }
+
         layout.addView(title)
         layout.addView(subtitle)
         layout.addView(searchInput)
@@ -200,10 +173,17 @@ class MainActivity : Activity() {
         layout.addView(privateButton)
         layout.addView(filterButtons)
         layout.addView(heading)
-        layout.addView(contactsList)
+
+        layout.addView(
+            scrollView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
 
         setContentView(layout)
-
         checkContactPermission()
     }
 
@@ -214,16 +194,14 @@ class MainActivity : Activity() {
     }
 
     private fun checkContactPermission() {
-
         val permissions = arrayOf(
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.WRITE_CONTACTS
         )
 
         if (!hasContactPermission() ||
-            checkSelfPermission(
-                Manifest.permission.WRITE_CONTACTS
-            ) != PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.WRITE_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(permissions, 100)
         } else {
@@ -243,7 +221,6 @@ class MainActivity : Activity() {
         )
 
         if (requestCode == 100) {
-
             if (hasContactPermission()) {
                 loadContacts()
             } else {
@@ -255,7 +232,6 @@ class MainActivity : Activity() {
     }
 
     private fun loadContacts() {
-
         contacts.clear()
 
         val projection = arrayOf(
@@ -274,25 +250,20 @@ class MainActivity : Activity() {
         )
 
         cursor?.use {
-
             val idIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID
             )
-
             val nameIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
             )
-
             val phoneIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.NUMBER
             )
-
             val photoIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
             )
 
             while (it.moveToNext()) {
-
                 contacts.add(
                     Contact(
                         id = it.getLong(idIndex),
@@ -312,7 +283,6 @@ class MainActivity : Activity() {
     }
 
     private fun displayContacts() {
-
         if (!::contactsList.isInitialized) return
 
         contactsList.removeAllViews()
@@ -320,7 +290,6 @@ class MainActivity : Activity() {
         val query = searchInput.text.toString().trim()
 
         val filtered = contacts.filter { contact ->
-
             val matchesSearch =
                 contact.name.contains(query, ignoreCase = true) ||
                 contact.phone.contains(query, ignoreCase = true)
@@ -333,7 +302,6 @@ class MainActivity : Activity() {
         }
 
         if (filtered.isEmpty()) {
-
             contactsList.addView(
                 TextView(this).apply {
                     text = if (showFavoritesOnly) {
@@ -341,17 +309,14 @@ class MainActivity : Activity() {
                     } else {
                         "No contacts found."
                     }
-
                     textSize = 16f
                     setPadding(8, 20, 8, 20)
                 }
             )
-
             return
         }
 
         filtered.forEach { contact ->
-
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(12, 12, 12, 12)
@@ -361,14 +326,13 @@ class MainActivity : Activity() {
             val topRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
+                setOnClickListener {
+                    showContactDetails(contact)
+                }
             }
 
             val picture = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    64,
-                    64
-                )
-
+                layoutParams = LinearLayout.LayoutParams(64, 64)
                 scaleType = ImageView.ScaleType.CENTER_CROP
 
                 if (!contact.photoUri.isNullOrBlank()) {
@@ -380,15 +344,16 @@ class MainActivity : Activity() {
                 }
 
                 if (drawable == null) {
-                    setBackgroundColor(
-                        Color.rgb(8, 127, 69)
-                    )
+                    setBackgroundColor(Color.rgb(8, 127, 69))
                 }
             }
 
             val details = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(16, 4, 4, 4)
+                setOnClickListener {
+                    showContactDetails(contact)
+                }
             }
 
             val name = TextView(this).apply {
@@ -403,17 +368,20 @@ class MainActivity : Activity() {
                 setTextColor(Color.DKGRAY)
             }
 
+            val openDetails = TextView(this).apply {
+                text = "View details"
+                textSize = 13f
+                setTextColor(Color.rgb(8, 127, 69))
+            }
+
             details.addView(name)
             details.addView(phone)
+            details.addView(openDetails)
 
             topRow.addView(picture)
             topRow.addView(
                 details,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
+                LinearLayout.LayoutParams(0, -2, 1f)
             )
 
             val buttons = LinearLayout(this).apply {
@@ -424,12 +392,7 @@ class MainActivity : Activity() {
                 favoriteIds.contains(contact.id.toString())
 
             val favoriteButton = Button(this).apply {
-                text = if (isFavorite) {
-                    "★ Favourite"
-                } else {
-                    "☆ Favourite"
-                }
-
+                text = if (isFavorite) "★ Favourite" else "☆ Favourite"
                 setOnClickListener {
                     toggleFavorite(contact)
                 }
@@ -437,7 +400,6 @@ class MainActivity : Activity() {
 
             val pictureButton = Button(this).apply {
                 text = "Picture"
-
                 setOnClickListener {
                     chooseContactPicture(contact)
                 }
@@ -445,7 +407,6 @@ class MainActivity : Activity() {
 
             val editButton = Button(this).apply {
                 text = "Edit"
-
                 setOnClickListener {
                     editContact(contact)
                 }
@@ -453,7 +414,6 @@ class MainActivity : Activity() {
 
             val deleteButton = Button(this).apply {
                 text = "Delete"
-
                 setOnClickListener {
                     confirmDelete(contact)
                 }
@@ -467,19 +427,150 @@ class MainActivity : Activity() {
             card.addView(topRow)
             card.addView(buttons)
 
-            val params = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-
+            val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 12
-
             contactsList.addView(card, params)
         }
     }
 
-    private fun chooseContactPicture(contact: Contact) {
+    // NEW FEATURE: Individual Contact Details Page
 
+    private fun showContactDetails(contact: Contact) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(24, 30, 24, 24)
+            setBackgroundColor(Color.WHITE)
+        }
+
+        val backButton = Button(this).apply {
+            text = "← Back to Contacts"
+            setOnClickListener {
+                showHomeScreen()
+            }
+        }
+
+        val heading = TextView(this).apply {
+            text = "Contact Details"
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(8, 127, 69))
+            setPadding(0, 20, 0, 25)
+        }
+
+        val picture = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(150, 150)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+
+            if (!contact.photoUri.isNullOrBlank()) {
+                try {
+                    setImageURI(Uri.parse(contact.photoUri))
+                } catch (e: Exception) {
+                    setImageDrawable(null)
+                }
+            }
+
+            if (drawable == null) {
+                setBackgroundColor(Color.rgb(8, 127, 69))
+            }
+        }
+
+        val name = TextView(this).apply {
+            text = contact.name
+            textSize = 26f
+            gravity = Gravity.CENTER
+            setTextColor(Color.BLACK)
+            setPadding(0, 20, 0, 10)
+        }
+
+        val phone = TextView(this).apply {
+            text = contact.phone
+            textSize = 19f
+            gravity = Gravity.CENTER
+            setTextColor(Color.DKGRAY)
+            setPadding(0, 0, 0, 25)
+        }
+
+        val callButton = Button(this).apply {
+            text = "Call"
+            setOnClickListener {
+                if (contact.phone.isBlank()) {
+                    showMessage("This contact has no phone number.")
+                } else {
+                    try {
+                        val intent = Intent(
+                            Intent.ACTION_DIAL,
+                            Uri.parse("tel:${Uri.encode(contact.phone)}")
+                        )
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        showMessage("Unable to open the dialler.")
+                    }
+                }
+            }
+        }
+
+        val messageButton = Button(this).apply {
+            text = "Message"
+            setOnClickListener {
+                if (contact.phone.isBlank()) {
+                    showMessage("This contact has no phone number.")
+                } else {
+                    try {
+                        val intent = Intent(
+                            Intent.ACTION_SENDTO,
+                            Uri.fromParts("smsto", contact.phone, null)
+                        )
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        showMessage("Unable to open a messaging app.")
+                    }
+                }
+            }
+        }
+
+        val editButton = Button(this).apply {
+            text = "Edit Contact"
+            setOnClickListener {
+                editContact(contact)
+            }
+        }
+
+        val pictureButton = Button(this).apply {
+            text = "Change Profile Picture"
+            setOnClickListener {
+                chooseContactPicture(contact)
+            }
+        }
+
+        val favoriteButton = Button(this).apply {
+            text = if (favoriteIds.contains(contact.id.toString())) {
+                "★ Remove from Favourites"
+            } else {
+                "☆ Add to Favourites"
+            }
+
+            setOnClickListener {
+                toggleFavorite(contact)
+                showContactDetails(contact)
+            }
+        }
+
+        layout.addView(backButton)
+        layout.addView(heading)
+        layout.addView(picture)
+        layout.addView(name)
+        layout.addView(phone)
+        layout.addView(callButton)
+        layout.addView(messageButton)
+        layout.addView(editButton)
+        layout.addView(pictureButton)
+        layout.addView(favoriteButton)
+
+        setContentView(layout)
+    }
+
+    private fun chooseContactPicture(contact: Contact) {
         selectedContact = contact
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -487,10 +578,7 @@ class MainActivity : Activity() {
             type = "image/*"
         }
 
-        startActivityForResult(
-            intent,
-            PICK_IMAGE_REQUEST
-        )
+        startActivityForResult(intent, PICK_IMAGE_REQUEST)
     }
 
     @Deprecated("Legacy activity result callback")
@@ -499,16 +587,11 @@ class MainActivity : Activity() {
         resultCode: Int,
         data: Intent?
     ) {
-        super.onActivityResult(
-            requestCode,
-            resultCode,
-            data
-        )
+        super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == PICK_IMAGE_REQUEST &&
             resultCode == RESULT_OK
         ) {
-
             val uri = data?.data
 
             if (uri != null) {
@@ -518,7 +601,6 @@ class MainActivity : Activity() {
     }
 
     private fun saveContactPicture(uri: Uri) {
-
         val contact = selectedContact
 
         if (contact == null) {
@@ -526,16 +608,14 @@ class MainActivity : Activity() {
             return
         }
 
-        if (checkSelfPermission(
-                Manifest.permission.WRITE_CONTACTS
-            ) != PackageManager.PERMISSION_GRANTED
+        if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             showMessage("Contact permission is required.")
             return
         }
 
         try {
-
             val photoBytes = contentResolver
                 .openInputStream(uri)
                 ?.use { it.readBytes() }
@@ -576,12 +656,10 @@ class MainActivity : Activity() {
             )
 
             if (updated == 0) {
-
                 values.put(
                     ContactsContract.Data.RAW_CONTACT_ID,
                     rawContactId
                 )
-
                 values.put(
                     ContactsContract.Data.MIMETYPE,
                     ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE
@@ -594,23 +672,16 @@ class MainActivity : Activity() {
             }
 
             showMessage("Contact picture saved.")
-
             selectedContact = null
             loadContacts()
 
         } catch (e: Exception) {
-
-            showMessage(
-                "Unable to save picture. Try another image."
-            )
+            showMessage("Unable to save picture. Try another image.")
         }
     }
 
     private fun findRawContactId(contactId: Long): Long? {
-
-        val projection = arrayOf(
-            ContactsContract.RawContacts._ID
-        )
+        val projection = arrayOf(ContactsContract.RawContacts._ID)
 
         val cursor = contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
@@ -631,7 +702,6 @@ class MainActivity : Activity() {
     }
 
     private fun toggleFavorite(contact: Contact) {
-
         val id = contact.id.toString()
 
         if (favoriteIds.contains(id)) {
@@ -643,27 +713,21 @@ class MainActivity : Activity() {
         }
 
         favoritePrefs.edit()
-            .putStringSet(
-                "favorite_ids",
-                favoriteIds.toSet()
-            )
+            .putStringSet("favorite_ids", favoriteIds.toSet())
             .apply()
 
         displayContacts()
     }
 
     private fun addContact() {
-
         val intent = Intent(
             Intent.ACTION_INSERT,
             ContactsContract.Contacts.CONTENT_URI
         )
-
         startActivity(intent)
     }
 
     private fun editContact(contact: Contact) {
-
         val uri = ContentUris.withAppendedId(
             ContactsContract.Contacts.CONTENT_URI,
             contact.id
@@ -680,7 +744,6 @@ class MainActivity : Activity() {
     }
 
     private fun confirmDelete(contact: Contact) {
-
         AlertDialog.Builder(this)
             .setTitle("Delete Contact")
             .setMessage(
@@ -694,17 +757,14 @@ class MainActivity : Activity() {
     }
 
     private fun deleteContact(contact: Contact) {
-
-        if (checkSelfPermission(
-                Manifest.permission.WRITE_CONTACTS
-            ) != PackageManager.PERMISSION_GRANTED
+        if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             checkContactPermission()
             return
         }
 
         try {
-
             val uri = ContentUris.withAppendedId(
                 ContactsContract.Contacts.CONTENT_URI,
                 contact.id
@@ -715,24 +775,18 @@ class MainActivity : Activity() {
             favoriteIds.remove(contact.id.toString())
 
             favoritePrefs.edit()
-                .putStringSet(
-                    "favorite_ids",
-                    favoriteIds.toSet()
-                )
+                .putStringSet("favorite_ids", favoriteIds.toSet())
                 .apply()
 
             showMessage("Contact deleted.")
-
             loadContacts()
 
         } catch (e: Exception) {
-
             showMessage("Unable to delete this contact.")
         }
     }
 
     private fun showMessage(message: String) {
-
         Toast.makeText(
             this,
             message,
