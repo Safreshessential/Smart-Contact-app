@@ -1,8 +1,8 @@
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services") version "4.4.2"
 }
 
 android {
@@ -32,10 +32,24 @@ android {
 }
 
 dependencies {
+
+    // Firebase Authentication
+    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    implementation("com.google.firebase:firebase-auth")
+
+    // AndroidX Compose
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui:1.7.5")
     implementation("androidx.compose.material3:material3:1.3.1")
     implementation("androidx.compose.ui:ui-tooling-preview:1.7.5")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+
+    // Biometric
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // Fragment
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
+
+    // Debug tools
     debugImplementation("androidx.compose.ui:ui-tooling:1.7.5")
 }
