@@ -14,9 +14,10 @@ import android.widget.*
 
 class MainActivity : Activity() {
 
-    private lateinit var layout: LinearLayout
     private lateinit var searchInput: EditText
     private lateinit var contactsList: LinearLayout
+
+    private var showFavoritesOnly = false
 
     private data class Contact(
         val id: Long,
@@ -26,8 +27,25 @@ class MainActivity : Activity() {
 
     private val contacts = mutableListOf<Contact>()
 
+    private val favoritePrefs by lazy {
+        getSharedPreferences(
+            "SmartContactFavorites",
+            MODE_PRIVATE
+        )
+    }
+
+    private val favoriteIds = mutableSetOf<String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        favoriteIds.addAll(
+            favoritePrefs.getStringSet(
+                "favorite_ids",
+                emptySet()
+            ) ?: emptySet()
+        )
+
         showHomeScreen()
     }
 
@@ -43,7 +61,7 @@ class MainActivity : Activity() {
 
     private fun showHomeScreen() {
 
-        layout = LinearLayout(this).apply {
+        val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 30, 24, 24)
             setBackgroundColor(Color.WHITE)
@@ -115,6 +133,47 @@ class MainActivity : Activity() {
             }
         }
 
+        val filterButtons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        val allButton = Button(this).apply {
+            text = "All Contacts"
+
+            setOnClickListener {
+                showFavoritesOnly = false
+                displayContacts()
+            }
+        }
+
+        val favoritesButton = Button(this).apply {
+            text = "★ Favourites"
+
+            setOnClickListener {
+                showFavoritesOnly = true
+                displayContacts()
+            }
+        }
+
+        filterButtons.addView(
+            allButton,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        filterButtons.addView(
+            favoritesButton,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
         val heading = TextView(this).apply {
             text = "My Contacts"
             textSize = 21f
@@ -131,6 +190,7 @@ class MainActivity : Activity() {
         layout.addView(searchInput)
         layout.addView(addButton)
         layout.addView(privateButton)
+        layout.addView(filterButtons)
         layout.addView(heading)
         layout.addView(contactsList)
 
@@ -175,7 +235,6 @@ class MainActivity : Activity() {
         )
 
         if (requestCode == 100) {
-
             if (hasContactPermission()) {
                 loadContacts()
             } else {
@@ -201,8 +260,7 @@ class MainActivity : Activity() {
             projection,
             null,
             null,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME +
-                " ASC"
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
         )
 
         cursor?.use {
@@ -242,17 +300,29 @@ class MainActivity : Activity() {
 
         val query = searchInput.text.toString().trim()
 
-        val filtered = contacts.filter {
+        val filtered = contacts.filter { contact ->
 
-            it.name.contains(query, ignoreCase = true) ||
-                it.phone.contains(query, ignoreCase = true)
+            val matchesSearch =
+                contact.name.contains(query, ignoreCase = true) ||
+                contact.phone.contains(query, ignoreCase = true)
+
+            val matchesFavorite =
+                !showFavoritesOnly ||
+                favoriteIds.contains(contact.id.toString())
+
+            matchesSearch && matchesFavorite
         }
 
         if (filtered.isEmpty()) {
 
             contactsList.addView(
                 TextView(this).apply {
-                    text = "No contacts found."
+                    text = if (showFavoritesOnly) {
+                        "No favourite contacts yet."
+                    } else {
+                        "No contacts found."
+                    }
+
                     textSize = 16f
                     setPadding(8, 20, 8, 20)
                 }
@@ -285,6 +355,22 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
             }
 
+            val isFavorite =
+                favoriteIds.contains(contact.id.toString())
+
+            val favoriteButton = Button(this).apply {
+
+                text = if (isFavorite) {
+                    "★ Favourite"
+                } else {
+                    "☆ Add Favourite"
+                }
+
+                setOnClickListener {
+                    toggleFavorite(contact)
+                }
+            }
+
             val editButton = Button(this).apply {
                 text = "Edit"
 
@@ -301,23 +387,9 @@ class MainActivity : Activity() {
                 }
             }
 
-            buttons.addView(
-                editButton,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-            )
-
-            buttons.addView(
-                deleteButton,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-            )
+            buttons.addView(favoriteButton)
+            buttons.addView(editButton)
+            buttons.addView(deleteButton)
 
             card.addView(name)
             card.addView(phone)
@@ -332,6 +404,28 @@ class MainActivity : Activity() {
 
             contactsList.addView(card, params)
         }
+    }
+
+    private fun toggleFavorite(contact: Contact) {
+
+        val id = contact.id.toString()
+
+        if (favoriteIds.contains(id)) {
+            favoriteIds.remove(id)
+            showMessage("Removed from favourites.")
+        } else {
+            favoriteIds.add(id)
+            showMessage("Added to favourites.")
+        }
+
+        favoritePrefs.edit()
+            .putStringSet(
+                "favorite_ids",
+                favoriteIds.toSet()
+            )
+            .apply()
+
+        displayContacts()
     }
 
     private fun addContact() {
@@ -394,8 +488,16 @@ class MainActivity : Activity() {
 
             contentResolver.delete(uri, null, null)
 
-            showMessage("Contact deleted.")
+            favoriteIds.remove(contact.id.toString())
 
+            favoritePrefs.edit()
+                .putStringSet(
+                    "favorite_ids",
+                    favoriteIds.toSet()
+                )
+                .apply()
+
+            showMessage("Contact deleted.")
             loadContacts()
 
         } catch (e: Exception) {
