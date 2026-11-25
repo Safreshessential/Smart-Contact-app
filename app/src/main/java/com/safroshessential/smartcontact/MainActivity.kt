@@ -4,11 +4,13 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
-import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
 
@@ -18,11 +20,13 @@ class MainActivity : Activity() {
     private lateinit var contactsList: LinearLayout
 
     private var showFavoritesOnly = false
+    private var selectedContact: Contact? = null
 
     private data class Contact(
         val id: Long,
         val name: String,
-        val phone: String
+        val phone: String,
+        val photoUri: String?
     )
 
     private val contacts = mutableListOf<Contact>()
@@ -35,6 +39,10 @@ class MainActivity : Activity() {
     }
 
     private val favoriteIds = mutableSetOf<String>()
+
+    companion object {
+        private const val PICK_IMAGE_REQUEST = 200
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -235,6 +243,7 @@ class MainActivity : Activity() {
         )
 
         if (requestCode == 100) {
+
             if (hasContactPermission()) {
                 loadContacts()
             } else {
@@ -252,7 +261,8 @@ class MainActivity : Activity() {
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
         )
 
         val cursor = contentResolver.query(
@@ -277,13 +287,22 @@ class MainActivity : Activity() {
                 ContactsContract.CommonDataKinds.Phone.NUMBER
             )
 
+            val photoIndex = it.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            )
+
             while (it.moveToNext()) {
 
                 contacts.add(
                     Contact(
                         id = it.getLong(idIndex),
                         name = it.getString(nameIndex) ?: "",
-                        phone = it.getString(phoneIndex) ?: ""
+                        phone = it.getString(phoneIndex) ?: "",
+                        photoUri = if (photoIndex >= 0) {
+                            it.getString(photoIndex)
+                        } else {
+                            null
+                        }
                     )
                 )
             }
@@ -339,6 +358,39 @@ class MainActivity : Activity() {
                 setBackgroundColor(Color.rgb(245, 248, 245))
             }
 
+            val topRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            val picture = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    64,
+                    64
+                )
+
+                scaleType = ImageView.ScaleType.CENTER_CROP
+
+                if (!contact.photoUri.isNullOrBlank()) {
+                    try {
+                        setImageURI(Uri.parse(contact.photoUri))
+                    } catch (e: Exception) {
+                        setImageDrawable(null)
+                    }
+                }
+
+                if (drawable == null) {
+                    setBackgroundColor(
+                        Color.rgb(8, 127, 69)
+                    )
+                }
+            }
+
+            val details = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(16, 4, 4, 4)
+            }
+
             val name = TextView(this).apply {
                 text = contact.name
                 textSize = 18f
@@ -351,6 +403,19 @@ class MainActivity : Activity() {
                 setTextColor(Color.DKGRAY)
             }
 
+            details.addView(name)
+            details.addView(phone)
+
+            topRow.addView(picture)
+            topRow.addView(
+                details,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
             val buttons = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
             }
@@ -359,15 +424,22 @@ class MainActivity : Activity() {
                 favoriteIds.contains(contact.id.toString())
 
             val favoriteButton = Button(this).apply {
-
                 text = if (isFavorite) {
                     "★ Favourite"
                 } else {
-                    "☆ Add Favourite"
+                    "☆ Favourite"
                 }
 
                 setOnClickListener {
                     toggleFavorite(contact)
+                }
+            }
+
+            val pictureButton = Button(this).apply {
+                text = "Picture"
+
+                setOnClickListener {
+                    chooseContactPicture(contact)
                 }
             }
 
@@ -388,11 +460,11 @@ class MainActivity : Activity() {
             }
 
             buttons.addView(favoriteButton)
+            buttons.addView(pictureButton)
             buttons.addView(editButton)
             buttons.addView(deleteButton)
 
-            card.addView(name)
-            card.addView(phone)
+            card.addView(topRow)
             card.addView(buttons)
 
             val params = LinearLayout.LayoutParams(
@@ -404,6 +476,158 @@ class MainActivity : Activity() {
 
             contactsList.addView(card, params)
         }
+    }
+
+    private fun chooseContactPicture(contact: Contact) {
+
+        selectedContact = contact
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+
+        startActivityForResult(
+            intent,
+            PICK_IMAGE_REQUEST
+        )
+    }
+
+    @Deprecated("Legacy activity result callback")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
+
+        if (requestCode == PICK_IMAGE_REQUEST &&
+            resultCode == RESULT_OK
+        ) {
+
+            val uri = data?.data
+
+            if (uri != null) {
+                saveContactPicture(uri)
+            }
+        }
+    }
+
+    private fun saveContactPicture(uri: Uri) {
+
+        val contact = selectedContact
+
+        if (contact == null) {
+            showMessage("No contact selected.")
+            return
+        }
+
+        if (checkSelfPermission(
+                Manifest.permission.WRITE_CONTACTS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            showMessage("Contact permission is required.")
+            return
+        }
+
+        try {
+
+            val photoBytes = contentResolver
+                .openInputStream(uri)
+                ?.use { it.readBytes() }
+
+            if (photoBytes == null || photoBytes.isEmpty()) {
+                showMessage("Unable to read this picture.")
+                return
+            }
+
+            val rawContactId = findRawContactId(contact.id)
+
+            if (rawContactId == null) {
+                showMessage("Unable to find this contact.")
+                return
+            }
+
+            val selection =
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND " +
+                "${ContactsContract.Data.MIMETYPE}=?"
+
+            val selectionArgs = arrayOf(
+                rawContactId.toString(),
+                ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE
+            )
+
+            val values = ContentValues().apply {
+                put(
+                    ContactsContract.CommonDataKinds.Photo.PHOTO,
+                    photoBytes
+                )
+            }
+
+            val updated = contentResolver.update(
+                ContactsContract.Data.CONTENT_URI,
+                values,
+                selection,
+                selectionArgs
+            )
+
+            if (updated == 0) {
+
+                values.put(
+                    ContactsContract.Data.RAW_CONTACT_ID,
+                    rawContactId
+                )
+
+                values.put(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE
+                )
+
+                contentResolver.insert(
+                    ContactsContract.Data.CONTENT_URI,
+                    values
+                )
+            }
+
+            showMessage("Contact picture saved.")
+
+            selectedContact = null
+            loadContacts()
+
+        } catch (e: Exception) {
+
+            showMessage(
+                "Unable to save picture. Try another image."
+            )
+        }
+    }
+
+    private fun findRawContactId(contactId: Long): Long? {
+
+        val projection = arrayOf(
+            ContactsContract.RawContacts._ID
+        )
+
+        val cursor = contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            projection,
+            "${ContactsContract.RawContacts.CONTACT_ID}=? AND " +
+                "${ContactsContract.RawContacts.DELETED}=0",
+            arrayOf(contactId.toString()),
+            null
+        )
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                return it.getLong(0)
+            }
+        }
+
+        return null
     }
 
     private fun toggleFavorite(contact: Contact) {
@@ -498,13 +722,12 @@ class MainActivity : Activity() {
                 .apply()
 
             showMessage("Contact deleted.")
+
             loadContacts()
 
         } catch (e: Exception) {
 
-            showMessage(
-                "Unable to delete this contact."
-            )
+            showMessage("Unable to delete this contact.")
         }
     }
 
