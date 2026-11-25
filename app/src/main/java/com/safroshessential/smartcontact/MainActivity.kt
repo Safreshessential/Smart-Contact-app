@@ -120,6 +120,14 @@ class MainActivity : Activity() {
             }
         }
 
+        // NEW: Duplicate Contacts button
+        val duplicateButton = Button(this).apply {
+            text = "Find Duplicate Contacts"
+            setOnClickListener {
+                showDuplicateContacts()
+            }
+        }
+
         val filterButtons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -171,6 +179,7 @@ class MainActivity : Activity() {
         layout.addView(searchInput)
         layout.addView(addButton)
         layout.addView(privateButton)
+        layout.addView(duplicateButton)
         layout.addView(filterButtons)
         layout.addView(heading)
 
@@ -433,7 +442,242 @@ class MainActivity : Activity() {
         }
     }
 
-    // NEW FEATURE: Individual Contact Details Page
+    // NEW FEATURE: Duplicate Contact Detection
+
+    private fun normalizePhoneNumber(number: String): String {
+        return number.filter { it.isDigit() }
+    }
+
+    private fun findDuplicateGroups(): List<Pair<String, List<Contact>>> {
+
+        return contacts
+            .filter { normalizePhoneNumber(it.phone).isNotBlank() }
+            .groupBy { normalizePhoneNumber(it.phone) }
+            .mapNotNull { (number, group) ->
+                val uniqueContacts = group.distinctBy { it.id }
+
+                if (uniqueContacts.size > 1) {
+                    Pair(number, uniqueContacts)
+                } else {
+                    null
+                }
+            }
+            .sortedBy { it.first }
+    }
+
+    private fun showDuplicateContacts() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 24, 20, 24)
+            setBackgroundColor(Color.WHITE)
+        }
+
+        val backButton = Button(this).apply {
+            text = "← Back to Contacts"
+            setOnClickListener {
+                showHomeScreen()
+            }
+        }
+
+        val heading = TextView(this).apply {
+            text = "Duplicate Contacts"
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(8, 127, 69))
+            setPadding(0, 20, 0, 10)
+        }
+
+        val explanation = TextView(this).apply {
+            text = "Contacts with the same phone number are listed together. Review them before deleting anything."
+            textSize = 15f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, 8, 0, 20)
+        }
+
+        val results = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        val scrollView = ScrollView(this).apply {
+            addView(results)
+        }
+
+        layout.addView(backButton)
+        layout.addView(heading)
+        layout.addView(explanation)
+
+        layout.addView(
+            scrollView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
+
+        setContentView(layout)
+
+        val duplicateGroups = findDuplicateGroups()
+
+        if (duplicateGroups.isEmpty()) {
+            results.addView(
+                TextView(this).apply {
+                    text = "No duplicate phone numbers found."
+                    textSize = 17f
+                    setTextColor(Color.rgb(8, 127, 69))
+                    setPadding(8, 20, 8, 20)
+                }
+            )
+            return
+        }
+
+        val countText = TextView(this).apply {
+            text = "Found ${duplicateGroups.size} duplicate number group(s)."
+            textSize = 17f
+            setTextColor(Color.BLACK)
+            setPadding(0, 0, 0, 16)
+        }
+
+        results.addView(countText)
+
+        duplicateGroups.forEachIndexed { index, group ->
+
+            val number = group.first
+            val duplicateContacts = group.second
+
+            val groupCard = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(12, 12, 12, 12)
+                setBackgroundColor(Color.rgb(245, 248, 245))
+            }
+
+            val groupHeading = TextView(this).apply {
+                text = "Duplicate Group ${index + 1}"
+                textSize = 18f
+                setTextColor(Color.rgb(8, 127, 69))
+            }
+
+            val numberText = TextView(this).apply {
+                text = "Phone number: $number"
+                textSize = 15f
+                setTextColor(Color.BLACK)
+                setPadding(0, 6, 0, 10)
+            }
+
+            groupCard.addView(groupHeading)
+            groupCard.addView(numberText)
+
+            duplicateContacts.forEach { contact ->
+
+                val contactRow = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(8, 10, 8, 10)
+                }
+
+                val nameText = TextView(this).apply {
+                    text = contact.name
+                    textSize = 17f
+                    setTextColor(Color.BLACK)
+                }
+
+                val contactPhone = TextView(this).apply {
+                    text = contact.phone
+                    textSize = 14f
+                    setTextColor(Color.DKGRAY)
+                }
+
+                val actionRow = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+
+                val viewButton = Button(this).apply {
+                    text = "View Details"
+                    setOnClickListener {
+                        showContactDetails(contact)
+                    }
+                }
+
+                val deleteButton = Button(this).apply {
+                    text = "Delete"
+                    setOnClickListener {
+                        confirmDeleteDuplicate(contact)
+                    }
+                }
+
+                actionRow.addView(
+                    viewButton,
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
+
+                actionRow.addView(
+                    deleteButton,
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
+
+                contactRow.addView(nameText)
+                contactRow.addView(contactPhone)
+                contactRow.addView(actionRow)
+
+                groupCard.addView(contactRow)
+            }
+
+            val params = LinearLayout.LayoutParams(-1, -2)
+            params.bottomMargin = 16
+
+            results.addView(groupCard, params)
+        }
+    }
+
+    private fun confirmDeleteDuplicate(contact: Contact) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Duplicate Contact?")
+            .setMessage(
+                "Are you sure you want to delete ${contact.name} (${contact.phone})? This will remove the contact from your phone."
+            )
+            .setPositiveButton("Delete") { _, _ ->
+                deleteDuplicateContact(contact)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deleteDuplicateContact(contact: Contact) {
+        if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            checkContactPermission()
+            return
+        }
+
+        try {
+            val uri = ContentUris.withAppendedId(
+                ContactsContract.Contacts.CONTENT_URI,
+                contact.id
+            )
+
+            val deleted = contentResolver.delete(uri, null, null)
+
+            if (deleted > 0) {
+                favoriteIds.remove(contact.id.toString())
+
+                favoritePrefs.edit()
+                    .putStringSet("favorite_ids", favoriteIds.toSet())
+                    .apply()
+
+                showMessage("Contact deleted.")
+            } else {
+                showMessage("Contact could not be deleted.")
+            }
+
+            loadContacts()
+            showDuplicateContacts()
+
+        } catch (e: Exception) {
+            showMessage("Unable to delete this contact.")
+        }
+    }
+
+    // Individual Contact Details Page
 
     private fun showContactDetails(contact: Contact) {
         val layout = LinearLayout(this).apply {
