@@ -39,6 +39,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val PICK_IMAGE_REQUEST = 200
+        private const val IMPORT_CONTACTS_REQUEST = 201
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,6 +109,14 @@ class MainActivity : Activity() {
             setOnClickListener { addContact() }
         }
 
+        // Import Contacts button
+        val importButton = Button(this).apply {
+            text = "Import Contacts"
+            setOnClickListener {
+                importContacts()
+            }
+        }
+
         val privateButton = Button(this).apply {
             text = "Private Contacts"
             setOnClickListener {
@@ -120,7 +129,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // NEW: Duplicate Contacts button
         val duplicateButton = Button(this).apply {
             text = "Find Duplicate Contacts"
             setOnClickListener {
@@ -178,6 +186,7 @@ class MainActivity : Activity() {
         layout.addView(subtitle)
         layout.addView(searchInput)
         layout.addView(addButton)
+        layout.addView(importButton)
         layout.addView(privateButton)
         layout.addView(duplicateButton)
         layout.addView(filterButtons)
@@ -442,14 +451,53 @@ class MainActivity : Activity() {
         }
     }
 
-    // NEW FEATURE: Duplicate Contact Detection
+    // IMPORT CONTACTS FROM A VCF FILE
+
+    private fun importContacts() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+
+        try {
+            startActivityForResult(
+                intent,
+                IMPORT_CONTACTS_REQUEST
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open your phone files.")
+        }
+    }
+
+    private fun openVcfImporter(uri: Uri) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "text/x-vcard")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            startActivity(intent)
+
+            showMessage(
+                "Choose the contacts import option to continue."
+            )
+
+        } catch (e: android.content.ActivityNotFoundException) {
+            showMessage(
+                "No compatible VCF importer was found on this phone."
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open this contact backup.")
+        }
+    }
+
+    // DUPLICATE CONTACT DETECTION
 
     private fun normalizePhoneNumber(number: String): String {
         return number.filter { it.isDigit() }
     }
 
     private fun findDuplicateGroups(): List<Pair<String, List<Contact>>> {
-
         return contacts
             .filter { normalizePhoneNumber(it.phone).isNotBlank() }
             .groupBy { normalizePhoneNumber(it.phone) }
@@ -531,17 +579,16 @@ class MainActivity : Activity() {
             return
         }
 
-        val countText = TextView(this).apply {
-            text = "Found ${duplicateGroups.size} duplicate number group(s)."
-            textSize = 17f
-            setTextColor(Color.BLACK)
-            setPadding(0, 0, 0, 16)
-        }
-
-        results.addView(countText)
+        results.addView(
+            TextView(this).apply {
+                text = "Found ${duplicateGroups.size} duplicate number group(s)."
+                textSize = 17f
+                setTextColor(Color.BLACK)
+                setPadding(0, 0, 0, 16)
+            }
+        )
 
         duplicateGroups.forEachIndexed { index, group ->
-
             val number = group.first
             val duplicateContacts = group.second
 
@@ -551,40 +598,44 @@ class MainActivity : Activity() {
                 setBackgroundColor(Color.rgb(245, 248, 245))
             }
 
-            val groupHeading = TextView(this).apply {
-                text = "Duplicate Group ${index + 1}"
-                textSize = 18f
-                setTextColor(Color.rgb(8, 127, 69))
-            }
+            groupCard.addView(
+                TextView(this).apply {
+                    text = "Duplicate Group ${index + 1}"
+                    textSize = 18f
+                    setTextColor(Color.rgb(8, 127, 69))
+                }
+            )
 
-            val numberText = TextView(this).apply {
-                text = "Phone number: $number"
-                textSize = 15f
-                setTextColor(Color.BLACK)
-                setPadding(0, 6, 0, 10)
-            }
-
-            groupCard.addView(groupHeading)
-            groupCard.addView(numberText)
+            groupCard.addView(
+                TextView(this).apply {
+                    text = "Phone number: $number"
+                    textSize = 15f
+                    setTextColor(Color.BLACK)
+                    setPadding(0, 6, 0, 10)
+                }
+            )
 
             duplicateContacts.forEach { contact ->
-
                 val contactRow = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(8, 10, 8, 10)
                 }
 
-                val nameText = TextView(this).apply {
-                    text = contact.name
-                    textSize = 17f
-                    setTextColor(Color.BLACK)
-                }
+                contactRow.addView(
+                    TextView(this).apply {
+                        text = contact.name
+                        textSize = 17f
+                        setTextColor(Color.BLACK)
+                    }
+                )
 
-                val contactPhone = TextView(this).apply {
-                    text = contact.phone
-                    textSize = 14f
-                    setTextColor(Color.DKGRAY)
-                }
+                contactRow.addView(
+                    TextView(this).apply {
+                        text = contact.phone
+                        textSize = 14f
+                        setTextColor(Color.DKGRAY)
+                    }
+                )
 
                 val actionRow = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -614,16 +665,12 @@ class MainActivity : Activity() {
                     LinearLayout.LayoutParams(0, -2, 1f)
                 )
 
-                contactRow.addView(nameText)
-                contactRow.addView(contactPhone)
                 contactRow.addView(actionRow)
-
                 groupCard.addView(contactRow)
             }
 
             val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 16
-
             results.addView(groupCard, params)
         }
     }
@@ -677,7 +724,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // Individual Contact Details Page
+    // INDIVIDUAL CONTACT DETAILS PAGE
 
     private fun showContactDetails(contact: Contact) {
         val layout = LinearLayout(this).apply {
@@ -814,6 +861,8 @@ class MainActivity : Activity() {
         setContentView(layout)
     }
 
+    // PROFILE PICTURES
+
     private fun chooseContactPicture(contact: Contact) {
         selectedContact = contact
 
@@ -833,13 +882,21 @@ class MainActivity : Activity() {
     ) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == PICK_IMAGE_REQUEST &&
-            resultCode == RESULT_OK
-        ) {
-            val uri = data?.data
+        if (resultCode != RESULT_OK) return
 
-            if (uri != null) {
-                saveContactPicture(uri)
+        when (requestCode) {
+            PICK_IMAGE_REQUEST -> {
+                val uri = data?.data
+                if (uri != null) {
+                    saveContactPicture(uri)
+                }
+            }
+
+            IMPORT_CONTACTS_REQUEST -> {
+                val uri = data?.data
+                if (uri != null) {
+                    openVcfImporter(uri)
+                }
             }
         }
     }
@@ -945,6 +1002,8 @@ class MainActivity : Activity() {
         return null
     }
 
+    // FAVOURITES
+
     private fun toggleFavorite(contact: Contact) {
         val id = contact.id.toString()
 
@@ -962,6 +1021,8 @@ class MainActivity : Activity() {
 
         displayContacts()
     }
+
+    // ADD, EDIT AND DELETE CONTACTS
 
     private fun addContact() {
         val intent = Intent(
