@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
@@ -20,7 +21,6 @@ class HiddenContactsActivity : Activity() {
     }
 
     private lateinit var pinInput: EditText
-
     private lateinit var storage: PrivateContactStorage
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +32,7 @@ class HiddenContactsActivity : Activity() {
     }
 
     private fun showLoginScreen() {
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -69,6 +70,7 @@ class HiddenContactsActivity : Activity() {
             } else {
                 "Create PIN"
             }
+
             setOnClickListener {
                 handlePin()
             }
@@ -76,8 +78,23 @@ class HiddenContactsActivity : Activity() {
 
         val fingerprintButton = Button(this).apply {
             text = "Unlock with Fingerprint"
+
             setOnClickListener {
                 authenticateFingerprint()
+            }
+        }
+
+        // Recovery Email Button
+        val recoveryButton = Button(this).apply {
+            text = "Recovery Email"
+
+            setOnClickListener {
+                val intent = Intent(
+                    this@HiddenContactsActivity,
+                    EmailRecoveryActivity::class.java
+                )
+
+                startActivity(intent)
             }
         }
 
@@ -86,11 +103,13 @@ class HiddenContactsActivity : Activity() {
         layout.addView(pinInput)
         layout.addView(pinButton)
         layout.addView(fingerprintButton)
+        layout.addView(recoveryButton)
 
         setContentView(layout)
     }
 
     private fun handlePin() {
+
         val pin = pinInput.text.toString()
 
         if (pin.length < 6 || !pin.all { it.isDigit() }) {
@@ -103,6 +122,7 @@ class HiddenContactsActivity : Activity() {
         }
 
         if (!prefs.contains("pin_hash")) {
+
             val salt = ByteArray(16)
             SecureRandom().nextBytes(salt)
 
@@ -135,19 +155,24 @@ class HiddenContactsActivity : Activity() {
                 savedHash.toByteArray()
             )
         ) {
+
             pinInput.text.clear()
             showVault()
+
         } else {
+
             Toast.makeText(
                 this,
                 "Incorrect PIN",
                 Toast.LENGTH_SHORT
             ).show()
+
             pinInput.text.clear()
         }
     }
 
     private fun hashPin(pin: String, salt: ByteArray): String {
+
         val spec = PBEKeySpec(
             pin.toCharArray(),
             salt,
@@ -252,6 +277,7 @@ class HiddenContactsActivity : Activity() {
     }
 
     private fun showVault() {
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 24, 24, 24)
@@ -276,11 +302,14 @@ class HiddenContactsActivity : Activity() {
 
         val saveButton = Button(this).apply {
             text = "Save Private Contact"
+
             setOnClickListener {
+
                 val name = nameInput.text.toString()
                 val phone = phoneInput.text.toString()
 
                 if (storage.saveContact(name, phone)) {
+
                     nameInput.text.clear()
                     phoneInput.text.clear()
 
@@ -291,7 +320,9 @@ class HiddenContactsActivity : Activity() {
                     ).show()
 
                     refreshContacts(layout)
+
                 } else {
+
                     Toast.makeText(
                         this@HiddenContactsActivity,
                         "Enter a name and phone number",
@@ -319,7 +350,10 @@ class HiddenContactsActivity : Activity() {
     }
 
     private fun refreshContacts(layout: LinearLayout) {
-        val oldList = layout.findViewWithTag<LinearLayout>("private_list")
+
+        val oldList =
+            layout.findViewWithTag<LinearLayout>("private_list")
+
         if (oldList != null) {
             layout.removeView(oldList)
         }
@@ -332,12 +366,16 @@ class HiddenContactsActivity : Activity() {
         val contacts = storage.getContacts()
 
         if (contacts.isEmpty()) {
+
             list.addView(TextView(this).apply {
                 text = "No private contacts saved yet."
                 textSize = 16f
             })
+
         } else {
+
             contacts.forEach { contact ->
+
                 list.addView(TextView(this).apply {
                     text = "${contact.name}\n${contact.phone}"
                     textSize = 17f
