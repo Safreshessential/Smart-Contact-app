@@ -536,75 +536,88 @@ class MainActivity : Activity() {
     }
 
     
-    // MORE / SETTINGS MENU
+    
+// MORE / SETTINGS MENU
 
-    private fun showMoreMenu() {
-        val options = arrayOf(
-            "Private Contacts",
-            "Import Contacts",
-            "Export Contacts",
-            "Find Duplicate Contacts",
-            "Spam Protection",
-            "App Settings",
-            "About Smart Contact"
-        )
+private fun showMoreMenu() {
+    val options = arrayOf(
+        "Private Contacts",
+        "Import Contacts",
+        "Export Contacts",
+        "Contact Backup & Restore",
+        "Find Duplicate Contacts",
+        "Spam Protection",
+        "App Settings",
+        "About Smart Contact"
+    )
 
-        AlertDialog.Builder(this)
-            .setTitle("Smart Contact Settings")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> openPrivateContacts()
-                    1 -> importContacts()
-                    2 -> exportContacts()
-                    3 -> showDuplicateContacts()
-                    4 -> openSpamProtection()
-                    5 -> showAppSettings()
-                    6 -> showAbout()
-                }
+    AlertDialog.Builder(this)
+        .setTitle("Smart Contact Settings")
+        .setItems(options) { _, which ->
+            when (which) {
+                0 -> openPrivateContacts()
+                1 -> importContacts()
+                2 -> exportContacts()
+                3 -> openContactBackup()
+                4 -> showDuplicateContacts()
+                5 -> openSpamProtection()
+                6 -> showAppSettings()
+                7 -> showAbout()
             }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun openSpamProtection() {
-        try {
-            startActivity(
-                Intent(this, SpamProtectionActivity::class.java)
-            )
-        } catch (e: Exception) {
-            showMessage("Unable to open Spam Protection.")
         }
-    }
+        .setNegativeButton("Close", null)
+        .show()
+}
 
-    private fun showAppSettings() {
-        AlertDialog.Builder(this)
-            .setTitle("App Settings")
-            .setMessage(
-                "Smart Contact settings will be expanded as more features are added."
-            )
-            .setPositiveButton("OK", null)
-            .show()
+private fun openContactBackup() {
+    try {
+        startActivity(
+            Intent(this, ContactBackupActivity::class.java)
+        )
+    } catch (e: Exception) {
+        showMessage("Unable to open Contact Backup & Restore.")
     }
+}
 
-    private fun showAbout() {
-        AlertDialog.Builder(this)
-            .setTitle("About Smart Contact")
-            .setMessage(
-                "Smart Contact helps you organise contacts, manage favourites, review call history and protect private contacts."
-            )
-            .setPositiveButton("OK", null)
-            .show()
+private fun openSpamProtection() {
+    try {
+        startActivity(
+            Intent(this, SpamProtectionActivity::class.java)
+        )
+    } catch (e: Exception) {
+        showMessage("Unable to open Spam Protection.")
     }
+}
 
-    private fun openPrivateContacts() {
-        try {
-            startActivity(
-                Intent(this, HiddenContactsActivity::class.java)
-            )
-        } catch (e: Exception) {
-            showMessage("Unable to open Private Contacts.")
-        }
+private fun showAppSettings() {
+    AlertDialog.Builder(this)
+        .setTitle("App Settings")
+        .setMessage(
+            "Smart Contact settings will be expanded as more features are added."
+        )
+        .setPositiveButton("OK", null)
+        .show()
+}
+
+private fun showAbout() {
+    AlertDialog.Builder(this)
+        .setTitle("About Smart Contact")
+        .setMessage(
+            "Smart Contact helps you organise contacts, manage favourites, review call history and protect private contacts."
+        )
+        .setPositiveButton("OK", null)
+        .show()
+}
+
+private fun openPrivateContacts() {
+    try {
+        startActivity(
+            Intent(this, HiddenContactsActivity::class.java)
+        )
+    } catch (e: Exception) {
+        showMessage("Unable to open Private Contacts.")
     }
+}
 
     // CONTACT PERMISSIONS
 
