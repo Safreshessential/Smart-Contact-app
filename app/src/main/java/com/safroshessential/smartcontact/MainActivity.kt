@@ -3,24 +3,24 @@ package com.safroshessential.smartcontact
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.role.RoleManager
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.telecom.TelecomManager
 import android.view.Gravity
 import android.widget.*
 import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.app.role.RoleManager
-import android.os.Build
-import android.telecom.TelecomManager
 
 class MainActivity : Activity() {
 
@@ -79,16 +79,17 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
-        if (::contactsList.isInitialized &&
-            hasContactPermission()
-        ) {
+        if (::contactsList.isInitialized && hasContactPermission()) {
             loadContacts()
         }
 
         if (currentPage == "recent" || currentPage == "home") {
             if (hasCallLogPermission()) {
-                if (currentPage == "recent") showRecentCalls()
-                else showHomeScreen()
+                if (currentPage == "recent") {
+                    showRecentCalls()
+                } else {
+                    showHomeScreen()
+                }
             }
         }
     }
@@ -153,16 +154,24 @@ class MainActivity : Activity() {
         searchInput.addTextChangedListener(
             object : android.text.TextWatcher {
                 override fun beforeTextChanged(
-                    s: CharSequence?, start: Int, count: Int, after: Int
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
                 ) {}
 
                 override fun onTextChanged(
-                    s: CharSequence?, start: Int, before: Int, count: Int
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
                 ) {
                     displayContacts()
                 }
 
-                override fun afterTextChanged(s: android.text.Editable?) {}
+                override fun afterTextChanged(
+                    s: android.text.Editable?
+                ) {}
             }
         )
 
@@ -189,6 +198,7 @@ class MainActivity : Activity() {
             addButton,
             LinearLayout.LayoutParams(0, -2, 1f)
         )
+
         actionRow.addView(
             favouritesButton,
             LinearLayout.LayoutParams(0, -2, 1f)
@@ -254,9 +264,20 @@ class MainActivity : Activity() {
             setOnClickListener { showMoreMenu() }
         }
 
-        nav.addView(allButton, LinearLayout.LayoutParams(0, -2, 1f))
-        nav.addView(recentButton, LinearLayout.LayoutParams(0, -2, 1f))
-        nav.addView(moreButton, LinearLayout.LayoutParams(0, -2, 1f))
+        nav.addView(
+            allButton,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        nav.addView(
+            recentButton,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        nav.addView(
+            moreButton,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
 
         return nav
     }
@@ -288,16 +309,24 @@ class MainActivity : Activity() {
         searchInput.addTextChangedListener(
             object : android.text.TextWatcher {
                 override fun beforeTextChanged(
-                    s: CharSequence?, start: Int, count: Int, after: Int
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
                 ) {}
 
                 override fun onTextChanged(
-                    s: CharSequence?, start: Int, before: Int, count: Int
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
                 ) {
                     displayContacts()
                 }
 
-                override fun afterTextChanged(s: android.text.Editable?) {}
+                override fun afterTextChanged(
+                    s: android.text.Editable?
+                ) {}
             }
         )
 
@@ -307,6 +336,7 @@ class MainActivity : Activity() {
             text = "+ Add New Contact"
             setOnClickListener { addContact() }
         }
+
         root.addView(addButton)
 
         contactsList = LinearLayout(this).apply {
@@ -317,10 +347,15 @@ class MainActivity : Activity() {
             addView(contactsList)
         }
 
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+
         root.addView(createBottomNavigation())
 
         setContentView(root)
+
         displayContacts()
     }
 
@@ -350,7 +385,11 @@ class MainActivity : Activity() {
             addView(contactsList)
         }
 
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+
         root.addView(createBottomNavigation())
 
         setContentView(root)
@@ -364,8 +403,11 @@ class MainActivity : Activity() {
 
             val permissionButton = Button(this).apply {
                 text = "Allow Call History"
-                setOnClickListener { requestCallLogPermission() }
+                setOnClickListener {
+                    requestCallLogPermission()
+                }
             }
+
             contactsList.addView(permissionButton)
         } else {
             displayRecentCalls(contactsList, null)
@@ -387,8 +429,11 @@ class MainActivity : Activity() {
 
             target.addView(Button(this).apply {
                 text = "Allow Call History"
-                setOnClickListener { requestCallLogPermission() }
+                setOnClickListener {
+                    requestCallLogPermission()
+                }
             })
+
             return
         }
 
@@ -412,14 +457,27 @@ class MainActivity : Activity() {
             )
 
             cursor?.use {
-                val nameIndex = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
-                val numberIndex = it.getColumnIndex(CallLog.Calls.NUMBER)
-                val typeIndex = it.getColumnIndex(CallLog.Calls.TYPE)
-                val dateIndex = it.getColumnIndex(CallLog.Calls.DATE)
-                val durationIndex = it.getColumnIndex(CallLog.Calls.DURATION)
+                val nameIndex =
+                    it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+
+                val numberIndex =
+                    it.getColumnIndex(CallLog.Calls.NUMBER)
+
+                val typeIndex =
+                    it.getColumnIndex(CallLog.Calls.TYPE)
+
+                val dateIndex =
+                    it.getColumnIndex(CallLog.Calls.DATE)
+
+                val durationIndex =
+                    it.getColumnIndex(CallLog.Calls.DURATION)
 
                 var count = 0
-                while (it.moveToNext() && (limit == null || count < limit)) {
+
+                while (
+                    it.moveToNext() &&
+                    (limit == null || count < limit)
+                ) {
                     calls.add(
                         RecentCall(
                             name = it.getString(nameIndex) ?: "",
@@ -429,12 +487,15 @@ class MainActivity : Activity() {
                             duration = it.getLong(durationIndex)
                         )
                     )
+
                     count++
                 }
             }
+
         } catch (e: SecurityException) {
             showMessage("Call history permission is required.")
             return
+
         } catch (e: Exception) {
             showMessage("Unable to read call history.")
             return
@@ -446,10 +507,12 @@ class MainActivity : Activity() {
                 textSize = 16f
                 setPadding(8, 20, 8, 20)
             })
+
             return
         }
 
         calls.forEach { call ->
+
             val callType = when (call.type) {
                 CallLog.Calls.INCOMING_TYPE -> "Incoming call"
                 CallLog.Calls.OUTGOING_TYPE -> "Outgoing call"
@@ -460,6 +523,7 @@ class MainActivity : Activity() {
             }
 
             val displayName = call.name.ifBlank { call.number }
+
             val dateText = SimpleDateFormat(
                 "dd MMM, hh:mm a",
                 Locale.getDefault()
@@ -495,17 +559,23 @@ class MainActivity : Activity() {
                 setTextColor(GREEN)
             })
 
-            card.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+            card.addView(
+                details,
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
 
             val callButton = Button(this).apply {
                 text = "Call"
+
                 setOnClickListener {
                     if (call.number.isNotBlank()) {
                         try {
                             startActivity(
                                 Intent(
                                     Intent.ACTION_DIAL,
-                                    Uri.parse("tel:${Uri.encode(call.number)}")
+                                    Uri.parse(
+                                        "tel:${Uri.encode(call.number)}"
+                                    )
                                 )
                             )
                         } catch (e: Exception) {
@@ -519,6 +589,7 @@ class MainActivity : Activity() {
 
             val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 10
+
             target.addView(card, params)
         }
     }
@@ -538,90 +609,89 @@ class MainActivity : Activity() {
         )
     }
 
-    
-// MORE / SETTINGS MENU
+    // MORE / SETTINGS MENU
 
-private fun showMoreMenu() {
-    val options = arrayOf(
-        "Private Contacts",
-        "Import Contacts",
-        "Export Contacts",
-        "Contact Backup & Restore",
-        "Find Duplicate Contacts",
-        "Spam Protection",
-        "Set as Default Phone App",
-        "App Settings",
-        "About Smart Contact"
-    )
+    private fun showMoreMenu() {
+        val options = arrayOf(
+            "Private Contacts",
+            "Import Contacts",
+            "Export Contacts",
+            "Contact Backup & Restore",
+            "Find Duplicate Contacts",
+            "Spam Protection",
+            "Set as Default Phone App",
+            "App Settings",
+            "About Smart Contact"
+        )
 
-    AlertDialog.Builder(this)
-        .setTitle("Smart Contact")
-        .setItems(options) { _, which ->
-            when (which) {
-                0 -> showPrivateContacts()
-                1 -> importContacts()
-                2 -> exportContacts()
-                3 -> openContactBackup()
-                4 -> findDuplicateGroups()
-                5 -> openSpamProtection()
-                6 -> requestDefaultPhoneApp()
-                7 -> showAppSettings()
-                8 -> showAbout()
+        AlertDialog.Builder(this)
+            .setTitle("Smart Contact")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> openPrivateContacts()
+                    1 -> importContacts()
+                    2 -> exportContacts()
+                    3 -> openContactBackup()
+                    4 -> showDuplicateContacts()
+                    5 -> openSpamProtection()
+                    6 -> requestDefaultPhoneApp()
+                    7 -> showAppSettings()
+                    8 -> showAbout()
+                }
             }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun openContactBackup() {
+        try {
+            startActivity(
+                Intent(this, ContactBackupActivity::class.java)
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open Contact Backup & Restore.")
         }
-        .setNegativeButton("Close", null)
-        .show()
-}
-
-private fun openContactBackup() {
-    try {
-        startActivity(
-            Intent(this, ContactBackupActivity::class.java)
-        )
-    } catch (e: Exception) {
-        showMessage("Unable to open Contact Backup & Restore.")
     }
-}
 
-private fun openSpamProtection() {
-    try {
-        startActivity(
-            Intent(this, SpamProtectionActivity::class.java)
-        )
-    } catch (e: Exception) {
-        showMessage("Unable to open Spam Protection.")
+    private fun openSpamProtection() {
+        try {
+            startActivity(
+                Intent(this, SpamProtectionActivity::class.java)
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open Spam Protection.")
+        }
     }
-}
 
-private fun showAppSettings() {
-    AlertDialog.Builder(this)
-        .setTitle("App Settings")
-        .setMessage(
-            "Smart Contact settings will be expanded as more features are added."
-        )
-        .setPositiveButton("OK", null)
-        .show()
-}
-
-private fun showAbout() {
-    AlertDialog.Builder(this)
-        .setTitle("About Smart Contact")
-        .setMessage(
-            "Smart Contact helps you organise contacts, manage favourites, review call history and protect private contacts."
-        )
-        .setPositiveButton("OK", null)
-        .show()
-}
-
-private fun openPrivateContacts() {
-    try {
-        startActivity(
-            Intent(this, HiddenContactsActivity::class.java)
-        )
-    } catch (e: Exception) {
-        showMessage("Unable to open Private Contacts.")
+    private fun showAppSettings() {
+        AlertDialog.Builder(this)
+            .setTitle("App Settings")
+            .setMessage(
+                "Smart Contact settings will be expanded as more features are added."
+            )
+            .setPositiveButton("OK", null)
+            .show()
     }
-}
+
+    private fun showAbout() {
+        AlertDialog.Builder(this)
+            .setTitle("About Smart Contact")
+            .setMessage(
+                "Smart Contact helps you organise contacts, manage favourites, review call history and protect private contacts."
+            )
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun openPrivateContacts() {
+        try {
+            startActivity(
+                Intent(this, HiddenContactsActivity::class.java)
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open Private Contacts.")
+        }
+    }
 
     // CONTACT PERMISSIONS
 
@@ -633,6 +703,7 @@ private fun openPrivateContacts() {
 
     private fun checkContactPermission() {
         val readGranted = hasContactPermission()
+
         val writeGranted = checkSelfPermission(
             Manifest.permission.WRITE_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
@@ -678,7 +749,9 @@ private fun openPrivateContacts() {
                         showHomeScreen()
                     }
                 } else {
-                    showMessage("Call history permission was not granted.")
+                    showMessage(
+                        "Call history permission was not granted."
+                    )
                 }
             }
         }
@@ -708,12 +781,15 @@ private fun openPrivateContacts() {
             val idIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID
             )
+
             val nameIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
             )
+
             val phoneIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.NUMBER
             )
+
             val photoIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
             )
@@ -726,14 +802,18 @@ private fun openPrivateContacts() {
                         phone = it.getString(phoneIndex) ?: "",
                         photoUri = if (photoIndex >= 0) {
                             it.getString(photoIndex)
-                        } else null
+                        } else {
+                            null
+                        }
                     )
                 )
             }
         }
 
         if (::contactsList.isInitialized) {
-            if (currentPage == "all") displayContacts()
+            if (currentPage == "all") {
+                displayContacts()
+            }
         }
     }
 
@@ -746,16 +826,19 @@ private fun openPrivateContacts() {
 
         val query = if (::searchInput.isInitialized) {
             searchInput.text.toString().trim()
-        } else ""
+        } else {
+            ""
+        }
 
         val filtered = contacts.filter { contact ->
+
             val matchesSearch =
                 contact.name.contains(query, ignoreCase = true) ||
-                contact.phone.contains(query, ignoreCase = true)
+                    contact.phone.contains(query, ignoreCase = true)
 
             val matchesFavorite =
                 !showFavoritesOnly ||
-                favoriteIds.contains(contact.id.toString())
+                    favoriteIds.contains(contact.id.toString())
 
             matchesSearch && matchesFavorite
         }
@@ -767,9 +850,11 @@ private fun openPrivateContacts() {
                 } else {
                     "No contacts found."
                 }
+
                 textSize = 16f
                 setPadding(8, 20, 8, 20)
             })
+
             return
         }
 
@@ -788,7 +873,9 @@ private fun openPrivateContacts() {
         val topRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setOnClickListener { showContactDetails(contact) }
+            setOnClickListener {
+                showContactDetails(contact)
+            }
         }
 
         val picture = ImageView(this).apply {
@@ -832,7 +919,11 @@ private fun openPrivateContacts() {
         })
 
         topRow.addView(picture)
-        topRow.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+
+        topRow.addView(
+            details,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
 
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -844,17 +935,24 @@ private fun openPrivateContacts() {
             } else {
                 "☆ Favourite"
             }
-            setOnClickListener { toggleFavorite(contact) }
+
+            setOnClickListener {
+                toggleFavorite(contact)
+            }
         }
 
         val pictureButton = Button(this).apply {
             text = "Picture"
-            setOnClickListener { chooseContactPicture(contact) }
+            setOnClickListener {
+                chooseContactPicture(contact)
+            }
         }
 
         val editButton = Button(this).apply {
             text = "Edit"
-            setOnClickListener { editContact(contact) }
+            setOnClickListener {
+                editContact(contact)
+            }
         }
 
         buttons.addView(favoriteButton)
@@ -866,6 +964,7 @@ private fun openPrivateContacts() {
 
         val params = LinearLayout.LayoutParams(-1, -2)
         params.bottomMargin = 12
+
         card.layoutParams = params
 
         return card
@@ -898,10 +997,15 @@ private fun openPrivateContacts() {
             addView(contactsList)
         }
 
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+
         root.addView(createBottomNavigation())
 
         setContentView(root)
+
         displayContacts()
     }
 
@@ -914,7 +1018,10 @@ private fun openPrivateContacts() {
         }
 
         try {
-            startActivityForResult(intent, IMPORT_CONTACTS_REQUEST)
+            startActivityForResult(
+                intent,
+                IMPORT_CONTACTS_REQUEST
+            )
         } catch (e: Exception) {
             showMessage("Unable to open your phone files.")
         }
@@ -928,10 +1035,16 @@ private fun openPrivateContacts() {
             }
 
             startActivity(intent)
-            showMessage("Choose the contacts import option to continue.")
+
+            showMessage(
+                "Choose the contacts import option to continue."
+            )
 
         } catch (e: android.content.ActivityNotFoundException) {
-            showMessage("No compatible VCF importer was found on this phone.")
+            showMessage(
+                "No compatible VCF importer was found on this phone."
+            )
+
         } catch (e: Exception) {
             showMessage("Unable to open this contact backup.")
         }
@@ -942,18 +1055,28 @@ private fun openPrivateContacts() {
     private fun exportContacts() {
         if (!hasContactPermission()) {
             checkContactPermission()
-            showMessage("Allow contact permission, then try exporting again.")
+
+            showMessage(
+                "Allow contact permission, then try exporting again."
+            )
+
             return
         }
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "text/vcard"
-            putExtra(Intent.EXTRA_TITLE, "SmartContact-Contacts.vcf")
+            putExtra(
+                Intent.EXTRA_TITLE,
+                "SmartContact-Contacts.vcf"
+            )
         }
 
         try {
-            startActivityForResult(intent, EXPORT_CONTACTS_REQUEST)
+            startActivityForResult(
+                intent,
+                EXPORT_CONTACTS_REQUEST
+            )
         } catch (e: Exception) {
             showMessage("Unable to open the save location.")
         }
@@ -990,9 +1113,11 @@ private fun openPrivateContacts() {
                 val idIndex = it.getColumnIndex(
                     ContactsContract.CommonDataKinds.Phone.CONTACT_ID
                 )
+
                 val nameIndex = it.getColumnIndex(
                     ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
                 )
+
                 val phoneIndex = it.getColumnIndex(
                     ContactsContract.CommonDataKinds.Phone.NUMBER
                 )
@@ -1006,6 +1131,7 @@ private fun openPrivateContacts() {
                         val entry = contactNumbers.getOrPut(id) {
                             Pair(name, mutableListOf())
                         }
+
                         if (!entry.second.contains(phone)) {
                             entry.second.add(phone)
                         }
@@ -1014,28 +1140,41 @@ private fun openPrivateContacts() {
             }
 
             if (contactNumbers.isEmpty()) {
-                showMessage("There are no phone contacts to export.")
+                showMessage(
+                    "There are no phone contacts to export."
+                )
                 return
             }
 
             val output = contentResolver.openOutputStream(uri)
+
             if (output == null) {
                 showMessage("Unable to create the backup file.")
                 return
             }
 
             output.use { stream ->
-                OutputStreamWriter(stream, Charsets.UTF_8).use { writer ->
+                OutputStreamWriter(
+                    stream,
+                    Charsets.UTF_8
+                ).use { writer ->
+
                     contactNumbers.values.forEach { entry ->
                         val name = entry.first
 
                         writer.write("BEGIN:VCARD\r\n")
                         writer.write("VERSION:3.0\r\n")
-                        writer.write("FN:${escapeVCard(name)}\r\n")
-                        writer.write("N:${escapeVCard(name)};;;;\r\n")
+                        writer.write(
+                            "FN:${escapeVCard(name)}\r\n"
+                        )
+                        writer.write(
+                            "N:${escapeVCard(name)};;;;\r\n"
+                        )
 
                         entry.second.forEach { number ->
-                            writer.write("TEL:${escapeVCard(number)}\r\n")
+                            writer.write(
+                                "TEL:${escapeVCard(number)}\r\n"
+                            )
                         }
 
                         writer.write("END:VCARD\r\n")
@@ -1043,10 +1182,14 @@ private fun openPrivateContacts() {
                 }
             }
 
-            showMessage("${contactNumbers.size} contacts exported successfully.")
+            showMessage(
+                "${contactNumbers.size} contacts exported successfully."
+            )
 
         } catch (e: Exception) {
-            showMessage("Unable to export contacts. Please try again.")
+            showMessage(
+                "Unable to export contacts. Please try again."
+            )
         }
     }
 
@@ -1058,13 +1201,20 @@ private fun openPrivateContacts() {
 
     private fun findDuplicateGroups(): List<Pair<String, List<Contact>>> {
         return contacts
-            .filter { normalizePhoneNumber(it.phone).isNotBlank() }
-            .groupBy { normalizePhoneNumber(it.phone) }
+            .filter {
+                normalizePhoneNumber(it.phone).isNotBlank()
+            }
+            .groupBy {
+                normalizePhoneNumber(it.phone)
+            }
             .mapNotNull { (number, group) ->
                 val uniqueContacts = group.distinctBy { it.id }
+
                 if (uniqueContacts.size > 1) {
                     Pair(number, uniqueContacts)
-                } else null
+                } else {
+                    null
+                }
             }
             .sortedBy { it.first }
     }
@@ -1078,7 +1228,9 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "← Back to Contacts"
-            setOnClickListener { showHomeScreen() }
+            setOnClickListener {
+                showHomeScreen()
+            }
         })
 
         layout.addView(TextView(this).apply {
@@ -1100,7 +1252,9 @@ private fun openPrivateContacts() {
             orientation = LinearLayout.VERTICAL
         }
 
-        val scroll = ScrollView(this).apply { addView(results) }
+        val scroll = ScrollView(this).apply {
+            addView(results)
+        }
 
         layout.addView(
             scroll,
@@ -1118,6 +1272,7 @@ private fun openPrivateContacts() {
                 setTextColor(GREEN)
                 setPadding(8, 20, 8, 20)
             })
+
             return
         }
 
@@ -1129,6 +1284,7 @@ private fun openPrivateContacts() {
         })
 
         groups.forEachIndexed { index, group ->
+
             val number = group.first
             val duplicateContacts = group.second
 
@@ -1152,6 +1308,7 @@ private fun openPrivateContacts() {
             })
 
             duplicateContacts.forEach { contact ->
+
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(8, 10, 8, 10)
@@ -1173,15 +1330,25 @@ private fun openPrivateContacts() {
                     orientation = LinearLayout.HORIZONTAL
                 }
 
-                actions.addView(Button(this).apply {
-                    text = "View Details"
-                    setOnClickListener { showContactDetails(contact) }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
+                actions.addView(
+                    Button(this).apply {
+                        text = "View Details"
+                        setOnClickListener {
+                            showContactDetails(contact)
+                        }
+                    },
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
 
-                actions.addView(Button(this).apply {
-                    text = "Delete"
-                    setOnClickListener { confirmDeleteDuplicate(contact) }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
+                actions.addView(
+                    Button(this).apply {
+                        text = "Delete"
+                        setOnClickListener {
+                            confirmDeleteDuplicate(contact)
+                        }
+                    },
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
 
                 row.addView(actions)
                 groupCard.addView(row)
@@ -1189,6 +1356,7 @@ private fun openPrivateContacts() {
 
             val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 16
+
             results.addView(groupCard, params)
         }
     }
@@ -1220,13 +1388,22 @@ private fun openPrivateContacts() {
                 contact.id
             )
 
-            val deleted = contentResolver.delete(uri, null, null)
+            val deleted = contentResolver.delete(
+                uri,
+                null,
+                null
+            )
 
             if (deleted > 0) {
                 favoriteIds.remove(contact.id.toString())
+
                 favoritePrefs.edit()
-                    .putStringSet("favorite_ids", favoriteIds.toSet())
+                    .putStringSet(
+                        "favorite_ids",
+                        favoriteIds.toSet()
+                    )
                     .apply()
+
                 showMessage("Contact deleted.")
             } else {
                 showMessage("Contact could not be deleted.")
@@ -1252,7 +1429,9 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "← Back to Contacts"
-            setOnClickListener { showAllContacts() }
+            setOnClickListener {
+                showAllContacts()
+            }
         })
 
         layout.addView(TextView(this).apply {
@@ -1275,7 +1454,9 @@ private fun openPrivateContacts() {
                 }
             }
 
-            if (drawable == null) setBackgroundColor(GREEN)
+            if (drawable == null) {
+                setBackgroundColor(GREEN)
+            }
         })
 
         layout.addView(TextView(this).apply {
@@ -1296,15 +1477,20 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "Call"
+
             setOnClickListener {
                 if (contact.phone.isBlank()) {
-                    showMessage("This contact has no phone number.")
+                    showMessage(
+                        "This contact has no phone number."
+                    )
                 } else {
                     try {
                         startActivity(
                             Intent(
                                 Intent.ACTION_DIAL,
-                                Uri.parse("tel:${Uri.encode(contact.phone)}")
+                                Uri.parse(
+                                    "tel:${Uri.encode(contact.phone)}"
+                                )
                             )
                         )
                     } catch (e: Exception) {
@@ -1316,19 +1502,28 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "Message"
+
             setOnClickListener {
                 if (contact.phone.isBlank()) {
-                    showMessage("This contact has no phone number.")
+                    showMessage(
+                        "This contact has no phone number."
+                    )
                 } else {
                     try {
                         startActivity(
                             Intent(
                                 Intent.ACTION_SENDTO,
-                                Uri.fromParts("smsto", contact.phone, null)
+                                Uri.fromParts(
+                                    "smsto",
+                                    contact.phone,
+                                    null
+                                )
                             )
                         )
                     } catch (e: Exception) {
-                        showMessage("Unable to open a messaging app.")
+                        showMessage(
+                            "Unable to open a messaging app."
+                        )
                     }
                 }
             }
@@ -1336,12 +1531,16 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "Edit Contact"
-            setOnClickListener { editContact(contact) }
+            setOnClickListener {
+                editContact(contact)
+            }
         })
 
         layout.addView(Button(this).apply {
             text = "Change Profile Picture"
-            setOnClickListener { chooseContactPicture(contact) }
+            setOnClickListener {
+                chooseContactPicture(contact)
+            }
         })
 
         layout.addView(Button(this).apply {
@@ -1359,7 +1558,9 @@ private fun openPrivateContacts() {
 
         layout.addView(Button(this).apply {
             text = "Delete Contact"
-            setOnClickListener { confirmDelete(contact) }
+            setOnClickListener {
+                confirmDelete(contact)
+            }
         })
 
         setContentView(layout)
@@ -1375,7 +1576,10 @@ private fun openPrivateContacts() {
             type = "image/*"
         }
 
-        startActivityForResult(intent, PICK_IMAGE_REQUEST)
+        startActivityForResult(
+            intent,
+            PICK_IMAGE_REQUEST
+        )
     }
 
     @Deprecated("Legacy activity result callback")
@@ -1384,24 +1588,34 @@ private fun openPrivateContacts() {
         resultCode: Int,
         data: Intent?
     ) {
-        super.onActivityResult(requestCode, resultCode, data)
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
 
         if (resultCode != RESULT_OK) return
 
         when (requestCode) {
             PICK_IMAGE_REQUEST -> {
                 val uri = data?.data
-                if (uri != null) saveContactPicture(uri)
+                if (uri != null) {
+                    saveContactPicture(uri)
+                }
             }
 
             IMPORT_CONTACTS_REQUEST -> {
                 val uri = data?.data
-                if (uri != null) openVcfImporter(uri)
+                if (uri != null) {
+                    openVcfImporter(uri)
+                }
             }
 
             EXPORT_CONTACTS_REQUEST -> {
                 val uri = data?.data
-                if (uri != null) writeVCardFile(uri)
+                if (uri != null) {
+                    writeVCardFile(uri)
+                }
             }
         }
     }
@@ -1466,10 +1680,12 @@ private fun openPrivateContacts() {
                     ContactsContract.Data.RAW_CONTACT_ID,
                     rawContactId
                 )
+
                 values.put(
                     ContactsContract.Data.MIMETYPE,
                     ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE
                 )
+
                 contentResolver.insert(
                     ContactsContract.Data.CONTENT_URI,
                     values
@@ -1477,17 +1693,23 @@ private fun openPrivateContacts() {
             }
 
             showMessage("Contact picture saved.")
+
             selectedContact = null
+
             loadContacts()
             showAllContacts()
 
         } catch (e: Exception) {
-            showMessage("Unable to save picture. Try another image.")
+            showMessage(
+                "Unable to save picture. Try another image."
+            )
         }
     }
 
     private fun findRawContactId(contactId: Long): Long? {
-        val projection = arrayOf(ContactsContract.RawContacts._ID)
+        val projection = arrayOf(
+            ContactsContract.RawContacts._ID
+        )
 
         val cursor = contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
@@ -1499,7 +1721,9 @@ private fun openPrivateContacts() {
         )
 
         cursor?.use {
-            if (it.moveToFirst()) return it.getLong(0)
+            if (it.moveToFirst()) {
+                return it.getLong(0)
+            }
         }
 
         return null
@@ -1519,7 +1743,10 @@ private fun openPrivateContacts() {
         }
 
         favoritePrefs.edit()
-            .putStringSet("favorite_ids", favoriteIds.toSet())
+            .putStringSet(
+                "favorite_ids",
+                favoriteIds.toSet()
+            )
             .apply()
 
         if (currentPage == "favourites") {
@@ -1583,11 +1810,19 @@ private fun openPrivateContacts() {
                 contact.id
             )
 
-            val deleted = contentResolver.delete(uri, null, null)
+            val deleted = contentResolver.delete(
+                uri,
+                null,
+                null
+            )
 
             favoriteIds.remove(contact.id.toString())
+
             favoritePrefs.edit()
-                .putStringSet("favorite_ids", favoriteIds.toSet())
+                .putStringSet(
+                    "favorite_ids",
+                    favoriteIds.toSet()
+                )
                 .apply()
 
             if (deleted > 0) {
@@ -1614,69 +1849,64 @@ private fun openPrivateContacts() {
         ).show()
     }
 
-private fun requestDefaultPhoneApp() {
+    // DEFAULT PHONE APP
 
-    try {
-        val intent: Intent
+    private fun requestDefaultPhoneApp() {
+        try {
+            val intent: Intent
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
-            val roleManager =
-                getSystemService(RoleManager::class.java)
+                val roleManager =
+                    getSystemService(RoleManager::class.java)
 
-            if (roleManager == null) {
-                Toast.makeText(
-                    this,
-                    "Phone role is unavailable",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
+                if (roleManager == null) {
+                    showMessage("Phone role is unavailable.")
+                    return
+                }
 
-            if (!roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)) {
-                Toast.makeText(
-                    this,
-                    "Default Phone role is not available",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
+                if (!roleManager.isRoleAvailable(
+                        RoleManager.ROLE_DIALER
+                    )
+                ) {
+                    showMessage(
+                        "Default Phone role is not available."
+                    )
+                    return
+                }
 
-            if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
-                Toast.makeText(
-                    this,
-                    "Smart Contact is already your default Phone app",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
+                if (roleManager.isRoleHeld(
+                        RoleManager.ROLE_DIALER
+                    )
+                ) {
+                    showMessage(
+                        "Smart Contact is already your default Phone app."
+                    )
+                    return
+                }
 
-            intent = roleManager.createRequestRoleIntent(
-                RoleManager.ROLE_DIALER
-            )
-
-        } else {
-
-            intent = Intent(
-                TelecomManager.ACTION_CHANGE_DEFAULT_DIALER
-            ).apply {
-                putExtra(
-                    TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,
-                    packageName
+                intent = roleManager.createRequestRoleIntent(
+                    RoleManager.ROLE_DIALER
                 )
+
+            } else {
+
+                intent = Intent(
+                    TelecomManager.ACTION_CHANGE_DEFAULT_DIALER
+                ).apply {
+                    putExtra(
+                        TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,
+                        packageName
+                    )
+                }
             }
+
+            startActivityForResult(intent, 203)
+
+        } catch (e: Exception) {
+            showMessage(
+                "Unable to request default Phone app."
+            )
         }
-
-        startActivityForResult(intent, 203)
-
-    } catch (e: Exception) {
-
-        Toast.makeText(
-            this,
-            "Unable to request default Phone app",
-            Toast.LENGTH_LONG
-        ).show()
     }
-}
-
 }
