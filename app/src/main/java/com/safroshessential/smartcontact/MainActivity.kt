@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.provider.ContactsContract
 import android.view.Gravity
 import android.widget.*
+import java.io.OutputStreamWriter
 
 class MainActivity : Activity() {
 
@@ -40,6 +41,7 @@ class MainActivity : Activity() {
     companion object {
         private const val PICK_IMAGE_REQUEST = 200
         private const val IMPORT_CONTACTS_REQUEST = 201
+        private const val EXPORT_CONTACTS_REQUEST = 202
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,8 @@ class MainActivity : Activity() {
             loadContacts()
         }
     }
+
+    // HOME SCREEN
 
     private fun showHomeScreen() {
         val layout = LinearLayout(this).apply {
@@ -100,39 +104,23 @@ class MainActivity : Activity() {
                     displayContacts()
                 }
 
-                override fun afterTextChanged(s: android.text.Editable?) {}
+                override fun afterTextChanged(
+                    s: android.text.Editable?
+                ) {}
             }
         )
 
         val addButton = Button(this).apply {
             text = "Add New Contact"
-            setOnClickListener { addContact() }
-        }
-
-        // Import Contacts button
-        val importButton = Button(this).apply {
-            text = "Import Contacts"
             setOnClickListener {
-                importContacts()
+                addContact()
             }
         }
 
-        val privateButton = Button(this).apply {
-            text = "Private Contacts"
+        val moreButton = Button(this).apply {
+            text = "☰ More / Tools"
             setOnClickListener {
-                startActivity(
-                    Intent(
-                        this@MainActivity,
-                        HiddenContactsActivity::class.java
-                    )
-                )
-            }
-        }
-
-        val duplicateButton = Button(this).apply {
-            text = "Find Duplicate Contacts"
-            setOnClickListener {
-                showDuplicateContacts()
+                showMoreMenu()
             }
         }
 
@@ -186,9 +174,7 @@ class MainActivity : Activity() {
         layout.addView(subtitle)
         layout.addView(searchInput)
         layout.addView(addButton)
-        layout.addView(importButton)
-        layout.addView(privateButton)
-        layout.addView(duplicateButton)
+        layout.addView(moreButton)
         layout.addView(filterButtons)
         layout.addView(heading)
 
@@ -205,6 +191,45 @@ class MainActivity : Activity() {
         checkContactPermission()
     }
 
+    // MORE / TOOLS MENU
+
+    private fun showMoreMenu() {
+        val options = arrayOf(
+            "Private Contacts",
+            "Import Contacts",
+            "Export Contacts",
+            "Find Duplicate Contacts"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("More / Tools")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> openPrivateContacts()
+                    1 -> importContacts()
+                    2 -> exportContacts()
+                    3 -> showDuplicateContacts()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun openPrivateContacts() {
+        try {
+            startActivity(
+                Intent(
+                    this,
+                    HiddenContactsActivity::class.java
+                )
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open Private Contacts.")
+        }
+    }
+
+    // CONTACT PERMISSIONS
+
     private fun hasContactPermission(): Boolean {
         return checkSelfPermission(
             Manifest.permission.READ_CONTACTS
@@ -218,8 +243,9 @@ class MainActivity : Activity() {
         )
 
         if (!hasContactPermission() ||
-            checkSelfPermission(Manifest.permission.WRITE_CONTACTS)
-            != PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(
+                Manifest.permission.WRITE_CONTACTS
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(permissions, 100)
         } else {
@@ -249,6 +275,8 @@ class MainActivity : Activity() {
         }
     }
 
+    // LOAD CONTACTS
+
     private fun loadContacts() {
         contacts.clear()
 
@@ -271,12 +299,15 @@ class MainActivity : Activity() {
             val idIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID
             )
+
             val nameIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
             )
+
             val phoneIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.NUMBER
             )
+
             val photoIndex = it.getColumnIndex(
                 ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
             )
@@ -299,6 +330,8 @@ class MainActivity : Activity() {
 
         displayContacts()
     }
+
+    // DISPLAY CONTACTS
 
     private fun displayContacts() {
         if (!::contactsList.isInitialized) return
@@ -335,6 +368,7 @@ class MainActivity : Activity() {
         }
 
         filtered.forEach { contact ->
+
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(12, 12, 12, 12)
@@ -397,6 +431,7 @@ class MainActivity : Activity() {
             details.addView(openDetails)
 
             topRow.addView(picture)
+
             topRow.addView(
                 details,
                 LinearLayout.LayoutParams(0, -2, 1f)
@@ -410,7 +445,12 @@ class MainActivity : Activity() {
                 favoriteIds.contains(contact.id.toString())
 
             val favoriteButton = Button(this).apply {
-                text = if (isFavorite) "★ Favourite" else "☆ Favourite"
+                text = if (isFavorite) {
+                    "★ Favourite"
+                } else {
+                    "☆ Favourite"
+                }
+
                 setOnClickListener {
                     toggleFavorite(contact)
                 }
@@ -430,28 +470,21 @@ class MainActivity : Activity() {
                 }
             }
 
-            val deleteButton = Button(this).apply {
-                text = "Delete"
-                setOnClickListener {
-                    confirmDelete(contact)
-                }
-            }
-
             buttons.addView(favoriteButton)
             buttons.addView(pictureButton)
             buttons.addView(editButton)
-            buttons.addView(deleteButton)
 
             card.addView(topRow)
             card.addView(buttons)
 
             val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 12
+
             contactsList.addView(card, params)
         }
     }
 
-    // IMPORT CONTACTS FROM A VCF FILE
+    // IMPORT CONTACTS
 
     private fun importContacts() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -491,16 +524,153 @@ class MainActivity : Activity() {
         }
     }
 
+    // EXPORT CONTACTS
+
+    private fun exportContacts() {
+        if (!hasContactPermission()) {
+            checkContactPermission()
+            showMessage("Allow contact permission, then try exporting again.")
+            return
+        }
+
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "text/vcard"
+            putExtra(
+                Intent.EXTRA_TITLE,
+                "SmartContact-Contacts.vcf"
+            )
+        }
+
+        try {
+            startActivityForResult(
+                intent,
+                EXPORT_CONTACTS_REQUEST
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open the save location.")
+        }
+    }
+
+    private fun escapeVCard(value: String): String {
+        return value
+            .replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+    }
+
+    private fun writeVCardFile(uri: Uri) {
+        try {
+            val projection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+
+            val cursor = contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                null,
+                null,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )
+
+            val contactNumbers =
+                linkedMapOf<Long, Pair<String, MutableList<String>>>()
+
+            cursor?.use {
+                val idIndex = it.getColumnIndex(
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID
+                )
+
+                val nameIndex = it.getColumnIndex(
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+                )
+
+                val phoneIndex = it.getColumnIndex(
+                    ContactsContract.CommonDataKinds.Phone.NUMBER
+                )
+
+                while (it.moveToNext()) {
+                    val id = it.getLong(idIndex)
+                    val name = it.getString(nameIndex) ?: ""
+                    val phone = it.getString(phoneIndex) ?: ""
+
+                    if (phone.isNotBlank()) {
+                        val entry = contactNumbers.getOrPut(id) {
+                            Pair(name, mutableListOf())
+                        }
+
+                        if (!entry.second.contains(phone)) {
+                            entry.second.add(phone)
+                        }
+                    }
+                }
+            }
+
+            if (contactNumbers.isEmpty()) {
+                showMessage("There are no phone contacts to export.")
+                return
+            }
+
+            val output = contentResolver.openOutputStream(uri)
+
+            if (output == null) {
+                showMessage("Unable to create the backup file.")
+                return
+            }
+
+            output.use { stream ->
+                OutputStreamWriter(stream, Charsets.UTF_8).use { writer ->
+
+                    contactNumbers.values.forEach { entry ->
+                        val name = entry.first
+                        val numbers = entry.second
+
+                        writer.write("BEGIN:VCARD\r\n")
+                        writer.write("VERSION:3.0\r\n")
+                        writer.write("FN:${escapeVCard(name)}\r\n")
+                        writer.write("N:${escapeVCard(name)};;;;\r\n")
+
+                        numbers.forEach { number ->
+                            writer.write(
+                                "TEL:${escapeVCard(number)}\r\n"
+                            )
+                        }
+
+                        writer.write("END:VCARD\r\n")
+                    }
+                }
+            }
+
+            showMessage(
+                "${contactNumbers.size} contacts exported successfully."
+            )
+
+        } catch (e: Exception) {
+            showMessage(
+                "Unable to export contacts. Please try again."
+            )
+        }
+    }
+
     // DUPLICATE CONTACT DETECTION
 
     private fun normalizePhoneNumber(number: String): String {
         return number.filter { it.isDigit() }
     }
 
-    private fun findDuplicateGroups(): List<Pair<String, List<Contact>>> {
+    private fun findDuplicateGroups():
+        List<Pair<String, List<Contact>>> {
+
         return contacts
-            .filter { normalizePhoneNumber(it.phone).isNotBlank() }
-            .groupBy { normalizePhoneNumber(it.phone) }
+            .filter {
+                normalizePhoneNumber(it.phone).isNotBlank()
+            }
+            .groupBy {
+                normalizePhoneNumber(it.phone)
+            }
             .mapNotNull { (number, group) ->
                 val uniqueContacts = group.distinctBy { it.id }
 
@@ -589,6 +759,7 @@ class MainActivity : Activity() {
         )
 
         duplicateGroups.forEachIndexed { index, group ->
+
             val number = group.first
             val duplicateContacts = group.second
 
@@ -616,6 +787,7 @@ class MainActivity : Activity() {
             )
 
             duplicateContacts.forEach { contact ->
+
                 val contactRow = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(8, 10, 8, 10)
@@ -671,6 +843,7 @@ class MainActivity : Activity() {
 
             val params = LinearLayout.LayoutParams(-1, -2)
             params.bottomMargin = 16
+
             results.addView(groupCard, params)
         }
     }
@@ -724,7 +897,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // INDIVIDUAL CONTACT DETAILS PAGE
+    // INDIVIDUAL CONTACT DETAILS
 
     private fun showContactDetails(contact: Contact) {
         val layout = LinearLayout(this).apply {
@@ -847,6 +1020,13 @@ class MainActivity : Activity() {
             }
         }
 
+        val deleteButton = Button(this).apply {
+            text = "Delete Contact"
+            setOnClickListener {
+                confirmDelete(contact)
+            }
+        }
+
         layout.addView(backButton)
         layout.addView(heading)
         layout.addView(picture)
@@ -857,6 +1037,7 @@ class MainActivity : Activity() {
         layout.addView(editButton)
         layout.addView(pictureButton)
         layout.addView(favoriteButton)
+        layout.addView(deleteButton)
 
         setContentView(layout)
     }
@@ -871,7 +1052,10 @@ class MainActivity : Activity() {
             type = "image/*"
         }
 
-        startActivityForResult(intent, PICK_IMAGE_REQUEST)
+        startActivityForResult(
+            intent,
+            PICK_IMAGE_REQUEST
+        )
     }
 
     @Deprecated("Legacy activity result callback")
@@ -885,8 +1069,10 @@ class MainActivity : Activity() {
         if (resultCode != RESULT_OK) return
 
         when (requestCode) {
+
             PICK_IMAGE_REQUEST -> {
                 val uri = data?.data
+
                 if (uri != null) {
                     saveContactPicture(uri)
                 }
@@ -894,8 +1080,17 @@ class MainActivity : Activity() {
 
             IMPORT_CONTACTS_REQUEST -> {
                 val uri = data?.data
+
                 if (uri != null) {
                     openVcfImporter(uri)
+                }
+            }
+
+            EXPORT_CONTACTS_REQUEST -> {
+                val uri = data?.data
+
+                if (uri != null) {
+                    writeVCardFile(uri)
                 }
             }
         }
@@ -961,6 +1156,7 @@ class MainActivity : Activity() {
                     ContactsContract.Data.RAW_CONTACT_ID,
                     rawContactId
                 )
+
                 values.put(
                     ContactsContract.Data.MIMETYPE,
                     ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE
@@ -982,7 +1178,9 @@ class MainActivity : Activity() {
     }
 
     private fun findRawContactId(contactId: Long): Long? {
-        val projection = arrayOf(ContactsContract.RawContacts._ID)
+        val projection = arrayOf(
+            ContactsContract.RawContacts._ID
+        )
 
         val cursor = contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
@@ -1029,6 +1227,7 @@ class MainActivity : Activity() {
             Intent.ACTION_INSERT,
             ContactsContract.Contacts.CONTENT_URI
         )
+
         startActivity(intent)
     }
 
@@ -1052,7 +1251,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle("Delete Contact")
             .setMessage(
-                "Are you sure you want to delete ${contact.name}?"
+                "Are you sure you want to delete ${contact.name}? This will remove the contact from your phone."
             )
             .setPositiveButton("Delete") { _, _ ->
                 deleteContact(contact)
@@ -1075,7 +1274,7 @@ class MainActivity : Activity() {
                 contact.id
             )
 
-            contentResolver.delete(uri, null, null)
+            val deleted = contentResolver.delete(uri, null, null)
 
             favoriteIds.remove(contact.id.toString())
 
@@ -1083,13 +1282,20 @@ class MainActivity : Activity() {
                 .putStringSet("favorite_ids", favoriteIds.toSet())
                 .apply()
 
-            showMessage("Contact deleted.")
-            loadContacts()
+            if (deleted > 0) {
+                showMessage("Contact deleted.")
+            } else {
+                showMessage("Contact could not be deleted.")
+            }
+
+            showHomeScreen()
 
         } catch (e: Exception) {
             showMessage("Unable to delete this contact.")
         }
     }
+
+    // GENERAL MESSAGE
 
     private fun showMessage(message: String) {
         Toast.makeText(
