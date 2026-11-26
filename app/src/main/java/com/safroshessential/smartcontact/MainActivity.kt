@@ -535,9 +535,46 @@ class MainActivity : Activity() {
         )
     }
 
+    
     // MORE / SETTINGS MENU
 
-    val
+    private fun showMoreMenu() {
+        val options = arrayOf(
+            "Private Contacts",
+            "Import Contacts",
+            "Export Contacts",
+            "Find Duplicate Contacts",
+            "Spam Protection",
+            "App Settings",
+            "About Smart Contact"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Smart Contact Settings")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> openPrivateContacts()
+                    1 -> importContacts()
+                    2 -> exportContacts()
+                    3 -> showDuplicateContacts()
+                    4 -> openSpamProtection()
+                    5 -> showAppSettings()
+                    6 -> showAbout()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun openSpamProtection() {
+        try {
+            startActivity(
+                Intent(this, SpamProtectionActivity::class.java)
+            )
+        } catch (e: Exception) {
+            showMessage("Unable to open Spam Protection.")
+        }
+    }
 
     private fun showAppSettings() {
         AlertDialog.Builder(this)
