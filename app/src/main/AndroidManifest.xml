@@ -30,9 +30,22 @@
             android:name=".MainActivity"
             android:exported="true">
 
+            <!-- LAUNCHER -->
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- PHONE DIALER SUPPORT -->
+
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="tel" />
             </intent-filter>
 
         </activity>
