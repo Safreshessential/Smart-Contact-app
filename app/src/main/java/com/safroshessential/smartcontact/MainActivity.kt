@@ -18,6 +18,9 @@ import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.app.role.RoleManager
+import android.os.Build
+import android.telecom.TelecomManager
 
 class MainActivity : Activity() {
 
@@ -1610,4 +1613,70 @@ private fun openPrivateContacts() {
             Toast.LENGTH_LONG
         ).show()
     }
+
+private fun requestDefaultPhoneApp() {
+
+    try {
+        val intent: Intent
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+            val roleManager =
+                getSystemService(RoleManager::class.java)
+
+            if (roleManager == null) {
+                Toast.makeText(
+                    this,
+                    "Phone role is unavailable",
+                    Toast.LENGTH_LONG
+                ).show()
+                return
+            }
+
+            if (!roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)) {
+                Toast.makeText(
+                    this,
+                    "Default Phone role is not available",
+                    Toast.LENGTH_LONG
+                ).show()
+                return
+            }
+
+            if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                Toast.makeText(
+                    this,
+                    "Smart Contact is already your default Phone app",
+                    Toast.LENGTH_LONG
+                ).show()
+                return
+            }
+
+            intent = roleManager.createRequestRoleIntent(
+                RoleManager.ROLE_DIALER
+            )
+
+        } else {
+
+            intent = Intent(
+                TelecomManager.ACTION_CHANGE_DEFAULT_DIALER
+            ).apply {
+                putExtra(
+                    TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,
+                    packageName
+                )
+            }
+        }
+
+        startActivityForResult(intent, 203)
+
+    } catch (e: Exception) {
+
+        Toast.makeText(
+            this,
+            "Unable to request default Phone app",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+
 }
