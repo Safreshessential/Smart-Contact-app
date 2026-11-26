@@ -536,7 +536,6 @@ class MainActivity : Activity() {
     }
 
     
-    
 // MORE / SETTINGS MENU
 
 private fun showMoreMenu() {
@@ -547,22 +546,24 @@ private fun showMoreMenu() {
         "Contact Backup & Restore",
         "Find Duplicate Contacts",
         "Spam Protection",
+        "Set as Default Phone App",
         "App Settings",
         "About Smart Contact"
     )
 
     AlertDialog.Builder(this)
-        .setTitle("Smart Contact Settings")
+        .setTitle("Smart Contact")
         .setItems(options) { _, which ->
             when (which) {
-                0 -> openPrivateContacts()
+                0 -> showPrivateContacts()
                 1 -> importContacts()
                 2 -> exportContacts()
                 3 -> openContactBackup()
-                4 -> showDuplicateContacts()
+                4 -> findDuplicateGroups()
                 5 -> openSpamProtection()
-                6 -> showAppSettings()
-                7 -> showAbout()
+                6 -> requestDefaultPhoneApp()
+                7 -> showAppSettings()
+                8 -> showAbout()
             }
         }
         .setNegativeButton("Close", null)
