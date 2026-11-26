@@ -537,31 +537,7 @@ class MainActivity : Activity() {
 
     // MORE / SETTINGS MENU
 
-    private fun showMoreMenu() {
-        val options = arrayOf(
-            "Private Contacts",
-            "Import Contacts",
-            "Export Contacts",
-            "Find Duplicate Contacts",
-            "App Settings",
-            "About Smart Contact"
-        )
-
-        AlertDialog.Builder(this)
-            .setTitle("Smart Contact Settings")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> openPrivateContacts()
-                    1 -> importContacts()
-                    2 -> exportContacts()
-                    3 -> showDuplicateContacts()
-                    4 -> showAppSettings()
-                    5 -> showAbout()
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
+    val
 
     private fun showAppSettings() {
         AlertDialog.Builder(this)
