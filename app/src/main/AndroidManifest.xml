@@ -22,6 +22,10 @@
     android:name=".ContactBackupActivity"
     android:exported="false" />
 
+<activity
+    android:name=".SmartCallActivity"
+    android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
