@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.view.Gravity
 import android.widget.*
@@ -59,6 +60,8 @@ class MainActivity : Activity() {
         private const val EXPORT_CONTACTS_REQUEST = 202
         private const val CONTACT_PERMISSION_REQUEST = 100
         private const val CALL_LOG_PERMISSION_REQUEST = 101
+        private const val DEFAULT_PHONE_REQUEST = 203
+        private const val DEFAULT_SMS_REQUEST = 204
 
         private val GREEN = Color.rgb(8, 127, 69)
         private val LIGHT_GREEN = Color.rgb(240, 248, 242)
@@ -613,6 +616,7 @@ class MainActivity : Activity() {
 
     private fun showMoreMenu() {
         val options = arrayOf(
+            "Messages",
             "Private Contacts",
             "Import Contacts",
             "Export Contacts",
@@ -620,6 +624,7 @@ class MainActivity : Activity() {
             "Find Duplicate Contacts",
             "Spam Protection",
             "Set as Default Phone App",
+            "Set as Default SMS App",
             "App Settings",
             "About Smart Contact"
         )
@@ -628,19 +633,49 @@ class MainActivity : Activity() {
             .setTitle("Smart Contact")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> openPrivateContacts()
-                    1 -> importContacts()
-                    2 -> exportContacts()
-                    3 -> openContactBackup()
-                    4 -> showDuplicateContacts()
-                    5 -> openSpamProtection()
-                    6 -> requestDefaultPhoneApp()
-                    7 -> showAppSettings()
-                    8 -> showAbout()
+                    0 -> openSmsInbox()
+                    1 -> openPrivateContacts()
+                    2 -> importContacts()
+                    3 -> exportContacts()
+                    4 -> openContactBackup()
+                    5 -> showDuplicateContacts()
+                    6 -> openSpamProtection()
+                    7 -> requestDefaultPhoneApp()
+                    8 -> requestDefaultSmsApp()
+                    9 -> showAppSettings()
+                    10 -> showAbout()
                 }
             }
             .setNegativeButton("Close", null)
             .show()
+    }
+
+    private fun openSmsInbox() {
+        val defaultSmsPackage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Telephony.Sms.getDefaultSmsPackage(this)
+        } else {
+            null
+        }
+
+        if (defaultSmsPackage != packageName) {
+            AlertDialog.Builder(this)
+                .setTitle("Set Smart Contact as Default SMS App")
+                .setMessage(
+                    "To manage SMS messages inside Smart Contact, first make it your default SMS app."
+                )
+                .setPositiveButton("Continue") { _, _ ->
+                    requestDefaultSmsApp()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        try {
+            startActivity(Intent(this, SmsInboxActivity::class.java))
+        } catch (e: Exception) {
+            showMessage("Unable to open Messages.")
+        }
     }
 
     private fun openContactBackup() {
@@ -1594,6 +1629,34 @@ class MainActivity : Activity() {
             data
         )
 
+        if (requestCode == DEFAULT_SMS_REQUEST) {
+            val isDefaultSms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                Telephony.Sms.getDefaultSmsPackage(this) == packageName
+            } else {
+                false
+            }
+
+            if (isDefaultSms) {
+                showMessage("Smart Contact is now your default SMS app.")
+                openSmsInbox()
+            } else {
+                showMessage("Smart Contact was not selected as the default SMS app.")
+            }
+            return
+        }
+
+        if (requestCode == DEFAULT_PHONE_REQUEST) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleManager = getSystemService(RoleManager::class.java)
+                if (roleManager?.isRoleHeld(RoleManager.ROLE_DIALER) == true) {
+                    showMessage("Smart Contact is now your default Phone app.")
+                } else {
+                    showMessage("Smart Contact was not selected as the default Phone app.")
+                }
+            }
+            return
+        }
+
         if (resultCode != RESULT_OK) return
 
         when (requestCode) {
@@ -1901,12 +1964,65 @@ class MainActivity : Activity() {
                 }
             }
 
-            startActivityForResult(intent, 203)
+            startActivityForResult(intent, DEFAULT_PHONE_REQUEST)
 
         } catch (e: Exception) {
             showMessage(
                 "Unable to request default Phone app."
             )
+        }
+    }
+
+    // DEFAULT SMS APP
+
+    private fun requestDefaultSmsApp() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleManager =
+                    getSystemService(RoleManager::class.java)
+
+                if (roleManager == null) {
+                    showMessage("SMS role is unavailable.")
+                    return
+                }
+
+                if (!roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
+                    showMessage("Default SMS role is not available on this phone.")
+                    return
+                }
+
+                if (roleManager.isRoleHeld(RoleManager.ROLE_SMS)) {
+                    showMessage("Smart Contact is already your default SMS app.")
+                    openSmsInbox()
+                    return
+                }
+
+                val intent = roleManager.createRequestRoleIntent(
+                    RoleManager.ROLE_SMS
+                )
+
+                startActivityForResult(intent, DEFAULT_SMS_REQUEST)
+
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                val intent = Intent(
+                    Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT
+                ).apply {
+                    putExtra(
+                        Telephony.Sms.Intents.EXTRA_PACKAGE_NAME,
+                        packageName
+                    )
+                }
+
+                startActivityForResult(intent, DEFAULT_SMS_REQUEST)
+
+            } else {
+                showMessage(
+                    "This Android version does not support choosing a default SMS app."
+                )
+            }
+
+        } catch (e: Exception) {
+            showMessage("Unable to request default SMS app.")
         }
     }
 }
