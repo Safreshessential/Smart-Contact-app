@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.ContentValues
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -13,11 +14,11 @@ import android.telephony.SmsManager
 import android.provider.Telephony
 import android.provider.ContactsContract
 import android.net.Uri
-import android.widget.ImageView
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -42,6 +43,7 @@ class SmsInboxActivity : Activity() {
     companion object {
         private const val SMS_PERMISSION_REQUEST = 301
         private const val SEND_PERMISSION_REQUEST = 302
+        private const val CONTACT_PERMISSION_REQUEST = 303
         private const val EXTRA_ADDRESS = "conversation_address"
     }
 
@@ -123,21 +125,14 @@ class SmsInboxActivity : Activity() {
 
         root.addView(
             heading,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(55)
-            )
+            LinearLayout.LayoutParams(-1, dp(55))
         )
 
         root.addView(buttons)
 
         root.addView(
             scrollView,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
+            LinearLayout.LayoutParams(-1, 0, 1f)
         )
 
         setContentView(root)
@@ -155,8 +150,120 @@ class SmsInboxActivity : Activity() {
                 arrayOf(Manifest.permission.READ_SMS),
                 SMS_PERMISSION_REQUEST
             )
+        } else if (
+            checkSelfPermission(Manifest.permission.READ_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.READ_CONTACTS),
+                CONTACT_PERMISSION_REQUEST
+            )
         } else {
             loadInbox()
+        }
+    }
+
+    private fun getContactDetails(
+        address: String
+    ): Pair<String, Uri?> {
+
+        if (
+            checkSelfPermission(Manifest.permission.READ_CONTACTS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            return Pair(address, null)
+        }
+
+        return try {
+
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(address)
+            )
+
+            contentResolver.query(
+                uri,
+                arrayOf(
+                    ContactsContract.PhoneLookup.DISPLAY_NAME,
+                    ContactsContract.PhoneLookup.PHOTO_URI
+                ),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+
+                if (cursor.moveToFirst()) {
+
+                    val name = cursor.getString(0) ?: address
+
+                    val photo = cursor.getString(1)?.let {
+                        Uri.parse(it)
+                    }
+
+                    return Pair(name, photo)
+                }
+            }
+
+            Pair(address, null)
+
+        } catch (e: Exception) {
+            Pair(address, null)
+        }
+    }
+
+    private fun createContactAvatar(
+        name: String,
+        photoUri: Uri?
+    ): View {
+
+        val size = dp(54)
+
+        if (photoUri != null) {
+
+            val image = ImageView(this)
+
+            try {
+                image.setImageURI(photoUri)
+
+                if (image.drawable != null) {
+                    image.layoutParams =
+                        LinearLayout.LayoutParams(size, size)
+
+                    image.scaleType =
+                        ImageView.ScaleType.CENTER_CROP
+
+                    image.background = avatarBackground()
+                    image.clipToOutline = true
+
+                    return image
+                }
+
+            } catch (_: Exception) {
+                // Use initials if the photo cannot be loaded.
+            }
+        }
+
+        val initial = name.trim()
+            .firstOrNull()
+            ?.uppercaseChar()
+            ?.toString() ?: "?"
+
+        return TextView(this).apply {
+            text = initial
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = avatarBackground()
+            layoutParams =
+                LinearLayout.LayoutParams(size, size)
+        }
+    }
+
+    private fun avatarBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(green)
         }
     }
 
@@ -165,6 +272,7 @@ class SmsInboxActivity : Activity() {
         messageList.removeAllViews()
 
         try {
+
             val conversations =
                 LinkedHashMap<String, SmsPreview>()
 
@@ -181,6 +289,7 @@ class SmsInboxActivity : Activity() {
             )
 
             cursor?.use {
+
                 while (it.moveToNext()) {
 
                     val address =
@@ -193,6 +302,7 @@ class SmsInboxActivity : Activity() {
                         it.getLong(2)
 
                     if (!conversations.containsKey(address)) {
+
                         conversations[address] = SmsPreview(
                             address,
                             body,
@@ -212,6 +322,7 @@ class SmsInboxActivity : Activity() {
             }
 
         } catch (e: Exception) {
+
             showEmptyMessage(
                 "Unable to load messages: ${e.message}"
             )
@@ -220,14 +331,27 @@ class SmsInboxActivity : Activity() {
 
     private fun addConversationItem(preview: SmsPreview) {
 
+        val contact = getContactDetails(preview.address)
+
         val item = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(14), dp(12), dp(14))
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(12), dp(10), dp(12))
             setBackgroundColor(Color.WHITE)
 
             setOnClickListener {
                 openConversation(preview.address)
             }
+        }
+
+        val avatar = createContactAvatar(
+            contact.first,
+            contact.second
+        )
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
         }
 
         val topRow = LinearLayout(this).apply {
@@ -236,10 +360,11 @@ class SmsInboxActivity : Activity() {
         }
 
         val sender = TextView(this).apply {
-            text = preview.address
+            text = contact.first
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(green)
+            maxLines = 1
         }
 
         val date = TextView(this).apply {
@@ -264,24 +389,35 @@ class SmsInboxActivity : Activity() {
             setPadding(0, dp(6), 0, 0)
         }
 
-        item.addView(topRow)
-        item.addView(body)
+        content.addView(topRow)
+        content.addView(body)
+
+        item.addView(avatar)
+
+        item.addView(
+            content,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
 
         messageList.addView(item)
 
-        messageList.addView(View(this).apply {
-            setBackgroundColor(Color.LTGRAY)
-        }, LinearLayout.LayoutParams(-1, dp(1)))
+        messageList.addView(
+            View(this).apply {
+                setBackgroundColor(Color.LTGRAY)
+            },
+            LinearLayout.LayoutParams(-1, dp(1))
+        )
     }
 
     private fun openConversation(address: String) {
 
-        val newIntent = android.content.Intent(
+        val newIntent = Intent(
             this,
             SmsInboxActivity::class.java
         )
 
         newIntent.putExtra(EXTRA_ADDRESS, address)
+
         startActivity(newIntent)
     }
 
@@ -289,7 +425,9 @@ class SmsInboxActivity : Activity() {
 
         val numberInput = EditText(this).apply {
             hint = "Enter phone number"
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
+            inputType =
+                android.text.InputType.TYPE_CLASS_PHONE
+
             setPadding(dp(12), dp(12), dp(12), dp(12))
         }
 
@@ -299,7 +437,8 @@ class SmsInboxActivity : Activity() {
             .setView(numberInput)
             .setPositiveButton("Continue") { _, _ ->
 
-                val number = numberInput.text.toString().trim()
+                val number =
+                    numberInput.text.toString().trim()
 
                 if (number.isEmpty()) {
                     showToast("Enter a phone number.")
@@ -314,6 +453,8 @@ class SmsInboxActivity : Activity() {
     private fun showConversation() {
 
         val address = conversationAddress() ?: return
+
+        val contact = getContactDetails(address)
 
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -333,8 +474,13 @@ class SmsInboxActivity : Activity() {
             }
         }
 
+        val avatar = createContactAvatar(
+            contact.first,
+            contact.second
+        )
+
         val title = TextView(this).apply {
-            text = address
+            text = contact.first
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(green)
@@ -342,6 +488,7 @@ class SmsInboxActivity : Activity() {
         }
 
         header.addView(backButton)
+        header.addView(avatar)
 
         header.addView(
             title,
@@ -369,6 +516,7 @@ class SmsInboxActivity : Activity() {
             minLines = 1
             maxLines = 4
             setPadding(dp(12), dp(8), dp(12), dp(8))
+
             background = roundedBackground(
                 Color.rgb(245, 245, 245),
                 Color.LTGRAY
@@ -393,11 +541,7 @@ class SmsInboxActivity : Activity() {
 
         root.addView(
             scrollView,
-            LinearLayout.LayoutParams(
-                -1,
-                0,
-                1f
-            )
+            LinearLayout.LayoutParams(-1, 0, 1f)
         )
 
         root.addView(composer)
@@ -412,6 +556,7 @@ class SmsInboxActivity : Activity() {
         messageList.removeAllViews()
 
         try {
+
             val cursor = contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
                 arrayOf(
@@ -428,6 +573,7 @@ class SmsInboxActivity : Activity() {
             var count = 0
 
             cursor?.use {
+
                 while (it.moveToNext()) {
 
                     val body = it.getString(1) ?: ""
@@ -440,7 +586,12 @@ class SmsInboxActivity : Activity() {
                         type == Telephony.Sms.MESSAGE_TYPE_FAILED ||
                         type == Telephony.Sms.MESSAGE_TYPE_QUEUED
 
-                    addMessageBubble(body, date, outgoing)
+                    addMessageBubble(
+                        body,
+                        date,
+                        outgoing
+                    )
+
                     count++
                 }
             }
@@ -456,6 +607,7 @@ class SmsInboxActivity : Activity() {
             }
 
         } catch (e: Exception) {
+
             showEmptyMessage(
                 "Unable to open conversation: ${e.message}"
             )
@@ -470,7 +622,13 @@ class SmsInboxActivity : Activity() {
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = if (outgoing) Gravity.END else Gravity.START
+
+            gravity = if (outgoing) {
+                Gravity.END
+            } else {
+                Gravity.START
+            }
+
             setPadding(0, dp(5), 0, dp(5))
         }
 
@@ -479,6 +637,7 @@ class SmsInboxActivity : Activity() {
             textSize = 14f
             setTextColor(Color.DKGRAY)
             setPadding(dp(12), dp(10), dp(12), dp(10))
+
             background = roundedBackground(
                 if (outgoing) paleGreen else Color.rgb(242, 242, 242),
                 if (outgoing) green else Color.LTGRAY
@@ -487,10 +646,7 @@ class SmsInboxActivity : Activity() {
 
         container.addView(
             bubble,
-            LinearLayout.LayoutParams(
-                dp(280),
-                -2
-            )
+            LinearLayout.LayoutParams(dp(280), -2)
         )
 
         messageList.addView(container)
@@ -511,6 +667,7 @@ class SmsInboxActivity : Activity() {
     private fun sendCurrentMessage() {
 
         val address = conversationAddress() ?: return
+
         val body = messageInput.text.toString().trim()
 
         if (body.isEmpty()) {
@@ -528,6 +685,7 @@ class SmsInboxActivity : Activity() {
                 arrayOf(Manifest.permission.SEND_SMS),
                 SEND_PERMISSION_REQUEST
             )
+
             return
         }
 
@@ -537,6 +695,7 @@ class SmsInboxActivity : Activity() {
     private fun sendSms(address: String, body: String) {
 
         try {
+
             SmsManager.getDefault().sendTextMessage(
                 address,
                 null,
@@ -546,13 +705,19 @@ class SmsInboxActivity : Activity() {
             )
 
             val values = ContentValues().apply {
+
                 put(Telephony.Sms.ADDRESS, address)
                 put(Telephony.Sms.BODY, body)
-                put(Telephony.Sms.DATE, System.currentTimeMillis())
+                put(
+                    Telephony.Sms.DATE,
+                    System.currentTimeMillis()
+                )
+
                 put(
                     Telephony.Sms.TYPE,
                     Telephony.Sms.MESSAGE_TYPE_SENT
                 )
+
                 put(Telephony.Sms.READ, 1)
                 put(Telephony.Sms.SEEN, 1)
             }
@@ -563,15 +728,20 @@ class SmsInboxActivity : Activity() {
                     values
                 )
             } catch (_: Exception) {
-                // The SMS may still have been submitted.
+                // SMS may still have been submitted.
             }
 
             messageInput.text.clear()
+
             loadConversation(address)
+
             showToast("SMS submitted for sending.")
 
         } catch (e: Exception) {
-            showToast("Unable to send SMS: ${e.message}")
+
+            showToast(
+                "Unable to send SMS: ${e.message}"
+            )
         }
     }
 
@@ -580,6 +750,7 @@ class SmsInboxActivity : Activity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
+
         super.onRequestPermissionsResult(
             requestCode,
             permissions,
@@ -593,8 +764,9 @@ class SmsInboxActivity : Activity() {
         when (requestCode) {
 
             SMS_PERMISSION_REQUEST -> {
+
                 if (granted) {
-                    loadInbox()
+                    checkPermissionAndLoad()
                 } else {
                     showEmptyMessage(
                         "SMS permission is required to read your inbox."
@@ -602,23 +774,42 @@ class SmsInboxActivity : Activity() {
                 }
             }
 
+            CONTACT_PERMISSION_REQUEST -> {
+
+                // Continue loading even if contact permission is denied.
+                loadInbox()
+            }
+
             SEND_PERMISSION_REQUEST -> {
+
                 if (granted) {
+
                     val address = conversationAddress()
-                    if (address != null && pendingMessage.isNotEmpty()) {
+
+                    if (
+                        address != null &&
+                        pendingMessage.isNotEmpty()
+                    ) {
                         val body = pendingMessage
                         pendingMessage = ""
+
                         sendSms(address, body)
                     }
+
                 } else {
+
                     pendingMessage = ""
-                    showToast("SMS sending permission was denied.")
+
+                    showToast(
+                        "SMS sending permission was denied."
+                    )
                 }
             }
         }
     }
 
     private fun formatDate(time: Long): String {
+
         return SimpleDateFormat(
             "dd MMM, hh:mm a",
             Locale.getDefault()
@@ -640,6 +831,11 @@ class SmsInboxActivity : Activity() {
     }
 
     private fun showToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+        Toast.makeText(
+            this,
+            message,
+            Toast.LENGTH_LONG
+        ).show()
     }
 }
