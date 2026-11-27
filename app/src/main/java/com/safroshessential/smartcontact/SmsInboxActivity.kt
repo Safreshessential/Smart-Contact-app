@@ -2,6 +2,7 @@ package com.safroshessential.smartcontact
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.PendingIntent
 import android.os.Bundle
 import android.Manifest
 import android.content.pm.PackageManager
@@ -44,6 +45,7 @@ class SmsInboxActivity : Activity() {
         private const val SMS_PERMISSION_REQUEST = 301
         private const val SEND_PERMISSION_REQUEST = 302
         private const val CONTACT_PERMISSION_REQUEST = 303
+
         private const val EXTRA_ADDRESS = "conversation_address"
     }
 
@@ -70,6 +72,8 @@ class SmsInboxActivity : Activity() {
     private fun conversationAddress(): String? {
         return intent.getStringExtra(EXTRA_ADDRESS)
     }
+
+    // SMS INBOX
 
     private fun showInbox() {
 
@@ -150,6 +154,7 @@ class SmsInboxActivity : Activity() {
                 arrayOf(Manifest.permission.READ_SMS),
                 SMS_PERMISSION_REQUEST
             )
+
         } else if (
             checkSelfPermission(Manifest.permission.READ_CONTACTS)
             != PackageManager.PERMISSION_GRANTED
@@ -158,10 +163,13 @@ class SmsInboxActivity : Activity() {
                 arrayOf(Manifest.permission.READ_CONTACTS),
                 CONTACT_PERMISSION_REQUEST
             )
+
         } else {
             loadInbox()
         }
     }
+
+    // CONTACT NAME AND PHOTO
 
     private fun getContactDetails(
         address: String
@@ -266,6 +274,8 @@ class SmsInboxActivity : Activity() {
             setColor(green)
         }
     }
+
+    // LOAD SMS INBOX
 
     private fun loadInbox() {
 
@@ -409,6 +419,8 @@ class SmsInboxActivity : Activity() {
         )
     }
 
+    // OPEN CONVERSATION
+
     private fun openConversation(address: String) {
 
         val newIntent = Intent(
@@ -420,6 +432,8 @@ class SmsInboxActivity : Activity() {
 
         startActivity(newIntent)
     }
+
+    // NEW MESSAGE
 
     private fun showNewMessageDialog() {
 
@@ -449,6 +463,8 @@ class SmsInboxActivity : Activity() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    // CONVERSATION SCREEN
 
     private fun showConversation() {
 
@@ -551,6 +567,8 @@ class SmsInboxActivity : Activity() {
         loadConversation(address)
     }
 
+    // LOAD CONVERSATION MESSAGES
+
     private fun loadConversation(address: String) {
 
         messageList.removeAllViews()
@@ -614,6 +632,8 @@ class SmsInboxActivity : Activity() {
         }
     }
 
+    // MESSAGE BUBBLES
+
     private fun addMessageBubble(
         body: String,
         date: Long,
@@ -664,6 +684,8 @@ class SmsInboxActivity : Activity() {
         }
     }
 
+    // SEND MESSAGE
+
     private fun sendCurrentMessage() {
 
         val address = conversationAddress() ?: return
@@ -696,28 +718,59 @@ class SmsInboxActivity : Activity() {
 
         try {
 
+            val sentIntent = Intent(
+                this,
+                SmsStatusReceiver::class.java
+            ).apply {
+                action = SmsStatusReceiver.ACTION_SMS_SENT
+                putExtra("sms_address", address)
+                putExtra("sms_body", body)
+            }
+
+            val deliveredIntent = Intent(
+                this,
+                SmsStatusReceiver::class.java
+            ).apply {
+                action = SmsStatusReceiver.ACTION_SMS_DELIVERED
+                putExtra("sms_address", address)
+                putExtra("sms_body", body)
+            }
+
+            val sentPendingIntent = PendingIntent.getBroadcast(
+                this,
+                System.currentTimeMillis().toInt(),
+                sentIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val deliveredPendingIntent = PendingIntent.getBroadcast(
+                this,
+                System.currentTimeMillis().toInt() + 1,
+                deliveredIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
+
             SmsManager.getDefault().sendTextMessage(
                 address,
                 null,
                 body,
-                null,
-                null
+                sentPendingIntent,
+                deliveredPendingIntent
             )
 
             val values = ContentValues().apply {
-
                 put(Telephony.Sms.ADDRESS, address)
                 put(Telephony.Sms.BODY, body)
                 put(
                     Telephony.Sms.DATE,
                     System.currentTimeMillis()
                 )
-
                 put(
                     Telephony.Sms.TYPE,
                     Telephony.Sms.MESSAGE_TYPE_SENT
                 )
-
                 put(Telephony.Sms.READ, 1)
                 put(Telephony.Sms.SEEN, 1)
             }
@@ -728,14 +781,14 @@ class SmsInboxActivity : Activity() {
                     values
                 )
             } catch (_: Exception) {
-                // SMS may still have been submitted.
+                // The SMS may still have been submitted.
             }
 
             messageInput.text.clear()
 
             loadConversation(address)
 
-            showToast("SMS submitted for sending.")
+            showToast("SMS submitted. Waiting for sending confirmation.")
 
         } catch (e: Exception) {
 
@@ -744,6 +797,8 @@ class SmsInboxActivity : Activity() {
             )
         }
     }
+
+    // PERMISSION RESULTS
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -775,8 +830,6 @@ class SmsInboxActivity : Activity() {
             }
 
             CONTACT_PERMISSION_REQUEST -> {
-
-                // Continue loading even if contact permission is denied.
                 loadInbox()
             }
 
@@ -808,6 +861,8 @@ class SmsInboxActivity : Activity() {
         }
     }
 
+    // DATE FORMAT
+
     private fun formatDate(time: Long): String {
 
         return SimpleDateFormat(
@@ -815,6 +870,8 @@ class SmsInboxActivity : Activity() {
             Locale.getDefault()
         ).format(Date(time))
     }
+
+    // EMPTY MESSAGE
 
     private fun showEmptyMessage(message: String) {
 
@@ -829,6 +886,8 @@ class SmsInboxActivity : Activity() {
         messageList.removeAllViews()
         messageList.addView(text)
     }
+
+    // TOAST
 
     private fun showToast(message: String) {
 
