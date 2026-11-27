@@ -11,6 +11,9 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.telephony.SmsManager
 import android.provider.Telephony
+import android.provider.ContactsContract
+import android.net.Uri
+import android.widget.ImageView
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
